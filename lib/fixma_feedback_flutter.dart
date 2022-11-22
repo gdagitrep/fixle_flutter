@@ -55,6 +55,7 @@ class Fixma {
                 child: IconButton(
                   onPressed: () {
                     var newThread = _Thread.addNewThread(context);
+                    threads.add(newThread);
                   },
                   icon: const Icon(Icons.add_comment),
                   padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
@@ -64,14 +65,19 @@ class Fixma {
                 height: 40.0,
                 width: 30.0,
                 child: IconButton(
-                    onPressed: () {
-          
-                    },
+                    onPressed: () {}, padding: const EdgeInsets.fromLTRB(0, 10, 0, 30), icon: const Icon(Icons.list))),
+            SizedBox(
+                height: 40.0,
+                width: 30.0,
+                child: IconButton(
+                    onPressed: () {},
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
                     icon: const Icon(Icons.leak_remove)))
           ],
         ));
   }
+
+  displayAllThreads() {}
 }
 
 class _ThreadData {
@@ -84,61 +90,153 @@ class _ThreadData {
 class _Thread {
   OverlayEntry? entry;
   _ThreadData? threadData;
+  _ThreadWidget? threadWidget;
 
   _Thread();
 
   factory _Thread.addNewThread(BuildContext context) {
     List<String> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
-    OverlayEntry threadEntry = OverlayEntry(builder: (context) => _ThreadWidget(comments, threadPosition));
+    var threadWidget = _ThreadWidget(comments, threadPosition);
+    OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry));
     return _Thread()
       ..entry = threadEntry
-      ..threadData = _ThreadData(comments, threadPosition);
+      ..threadData = _ThreadData(comments, threadPosition)
+      ..threadWidget = threadWidget;
   }
 
-  rebuildThread(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry!));
+  hideThread() {
+
   }
+
+  // rebuildThread(BuildContext context) {
+  //   WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry!));
+  // }
 }
 
 class _ThreadWidget extends StatefulWidget {
   final List<String> comments;
   final PrimitiveWrapper<Offset>? threadPosition;
+  final _ThreadWidgetState stateWidget;
 
-  const _ThreadWidget(this.comments, this.threadPosition);
+  _ThreadWidget(this.comments, this.threadPosition): stateWidget = _ThreadWidgetState();
 
   @override
-  State<StatefulWidget> createState() => _ThreadWidgetState();
+  State<StatefulWidget> createState() => stateWidget;
+
+  void minimizeExternal() {
+
+  }
 }
 
 class _ThreadWidgetState extends State<_ThreadWidget> {
-  List<String>? comments;
+  late List<String> comments;
   bool? isMinimized;
   PrimitiveWrapper<Offset>? threadPosition;
+  bool? isHidden;
+  bool? placeIsLocked;
+  final fieldText = TextEditingController();
+  static final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     comments = widget.comments;
     isMinimized = false;
+    isHidden = false;
     threadPosition = widget.threadPosition;
+    placeIsLocked = false;
+  }
+
+  void minimizeExternal() {
+    setState(() {
+      isMinimized = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isHidden == true) {
+      return Container();
+    }
     return isMinimized == true ? minimizedThread() : commentThread(widget.comments);
   }
 
   Widget commentThread(List<String> previousComments) {
+    Widget bottomBar() => SizedBox(
+        height: 35,
+        child: Row(
+          children: [
+            // if no comments, show cross button, or show minimize button
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  isMinimized = true;
+                });
+              },
+              icon: Icon(
+                comments.isEmpty? Icons.close : Icons.minimize,
+                color: Colors.blue,
+              ),
+              padding: EdgeInsets.zero,
+            ),
+            Expanded(child: Container()),
+            IconButton(
+              onPressed: () {
+                final form = formKey.currentState!;
+                if (form.validate()) {
+                  form.save();
+                }
+              },
+              icon: const Icon(
+                Icons.arrow_circle_right_outlined,
+                color: Colors.blue,
+              ),
+              padding: EdgeInsets.zero,
+            )
+          ],
+        ));
+    List<Widget> children = <Widget>[];
+    for(var comment in comments) {
+      children.add(Text(comment));
+    }
+    children.add(TextFormField(
+      controller: fieldText,
+      textInputAction: TextInputAction.next,
+      textCapitalization: TextCapitalization.sentences,
+      keyboardType: TextInputType.multiline,
+      maxLines: 10,
+      minLines: 1,
+      decoration: const InputDecoration(
+        hintText: 'Add comment',
+      ),
+      validator: (val) {
+        if (val == null || val.isEmpty) {
+          return 'Enter comment';
+        }
+        return null;
+      },
+      onSaved: (val) {
+        comments.add(val!);
+        fieldText.clear();
+        setState(() {
+          placeIsLocked = true;
+        });
+      },
+    ));
+    children.add(bottomBar());
+
     return Positioned(
         left: threadPosition?.value.dx,
         top: threadPosition?.value.dy,
         child: GestureDetector(
             onPanUpdate: (details) {
-              setState(() {
-                threadPosition?.value += details.delta;
-              });
+              if (placeIsLocked == false) {
+                setState(() {
+                  threadPosition?.value += details.delta;
+                });
+              }
             },
             child: Material(
                 elevation: 10,
@@ -146,45 +244,7 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
                     width: 200,
                     child: Padding(
                         padding: const EdgeInsets.fromLTRB(5, 0, 10, 0),
-                        child: Column(children: [
-                          const TextField(
-                              textInputAction: TextInputAction.next,
-                              textCapitalization: TextCapitalization.sentences,
-                              key: Key("meal_description"),
-                              keyboardType: TextInputType.multiline,
-                              maxLines: 10,
-                              minLines: 1,
-                              decoration: InputDecoration(
-                                hintText: 'Add comment',
-                              )),
-                          SizedBox(
-                              height: 35,
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        isMinimized = true;
-                                      });
-                                    },
-                                    icon: const Icon(
-                                      Icons.minimize,
-                                      color: Colors.blue,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  Expanded(child: Container()),
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: const Icon(
-                                      Icons.arrow_circle_right_outlined,
-                                      color: Colors.blue,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                  )
-                                ],
-                              ))
-                        ]))))));
+                        child: Form(key: formKey, child: Column(children: children)))))));
   }
 
   Widget minimizedThread() {
