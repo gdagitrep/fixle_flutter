@@ -16,6 +16,7 @@ class Fixma {
   Offset offset = Offset(0, 200);
   OverlayEntry? fixmaOverlayEntry;
   List<_Thread> threads = <_Thread>[];
+  int currentThreadIndex = 0;
 
   hideOverlay() {
     fixmaOverlayEntry?.remove();
@@ -55,6 +56,10 @@ class Fixma {
                 child: IconButton(
                   onPressed: () {
                     var newThread = _Thread.addNewThread(context);
+                    if (threads.isNotEmpty) {
+                      threads[currentThreadIndex].hideThread();
+                    }
+                    currentThreadIndex = threads.length;
                     threads.add(newThread);
                   },
                   icon: const Icon(Icons.add_comment),
@@ -70,9 +75,28 @@ class Fixma {
                 height: 40.0,
                 width: 30.0,
                 child: IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      if (threads.isNotEmpty) {
+                        threads[currentThreadIndex].hideThread();
+                        currentThreadIndex = (currentThreadIndex - 1) % threads.length;
+                        threads[currentThreadIndex].rebuildThread(context);
+                      }
+                    },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
-                    icon: const Icon(Icons.leak_remove)))
+                    icon: const Icon(Icons.arrow_upward))),
+            SizedBox(
+                height: 40.0,
+                width: 30.0,
+                child: IconButton(
+                    onPressed: () {
+                      if (threads.isNotEmpty) {
+                        threads[currentThreadIndex].hideThread();
+                        currentThreadIndex = (currentThreadIndex + 1) % threads.length;
+                        threads[currentThreadIndex].rebuildThread(context);
+                      }
+                    },
+                    padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
+                    icon: const Icon(Icons.arrow_downward)))
           ],
         ));
   }
@@ -88,9 +112,8 @@ class _ThreadData {
 }
 
 class _Thread {
-  OverlayEntry? entry;
-  _ThreadData? threadData;
-  _ThreadWidget? threadWidget;
+  late OverlayEntry entry;
+  late _ThreadData threadData;
 
   _Thread();
 
@@ -102,28 +125,26 @@ class _Thread {
     WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry));
     return _Thread()
       ..entry = threadEntry
-      ..threadData = _ThreadData(comments, threadPosition)
-      ..threadWidget = threadWidget;
+      ..threadData = _ThreadData(comments, threadPosition);
   }
 
   hideThread() {
-
+    entry.remove();
   }
 
-  // rebuildThread(BuildContext context) {
-  //   WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry!));
-  // }
+  rebuildThread(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry));
+  }
 }
 
 class _ThreadWidget extends StatefulWidget {
   final List<String> comments;
   final PrimitiveWrapper<Offset>? threadPosition;
-  final _ThreadWidgetState stateWidget;
 
-  _ThreadWidget(this.comments, this.threadPosition): stateWidget = _ThreadWidgetState();
+  _ThreadWidget(this.comments, this.threadPosition);
 
   @override
-  State<StatefulWidget> createState() => stateWidget;
+  State<StatefulWidget> createState() => _ThreadWidgetState();
 
   void minimizeExternal() {
 
