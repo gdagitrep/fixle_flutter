@@ -42,6 +42,7 @@ class Fixma {
     }
   }
 }
+
 class FixmaBar extends StatefulWidget {
   final OverlayEntry? fixmaOverlayEntry;
   final List<_Thread> threads;
@@ -50,9 +51,10 @@ class FixmaBar extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-   return FixmaBarState();
+    return FixmaBarState();
   }
 }
+
 class FixmaBarState extends State<FixmaBar> {
   bool hide = false;
   int currentThreadIndex = 0;
@@ -60,7 +62,9 @@ class FixmaBarState extends State<FixmaBar> {
   @override
   Widget build(BuildContext context) {
     if (hide) {
-      WidgetsBinding.instance.addPostFrameCallback((_) { addThreadWithScreenshotOnFixBarAbsence();});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        addThreadWithScreenshotOnFixBarAbsence();
+      });
       return Container();
     }
     return Material(
@@ -120,7 +124,7 @@ class FixmaBarState extends State<FixmaBar> {
         ));
   }
 
-  void addThreadWithScreenshotOnFixBarAbsence () async {
+  void addThreadWithScreenshotOnFixBarAbsence() async {
     if (widget.threads.isNotEmpty) {
       widget.threads[currentThreadIndex].hideThread();
     }
@@ -157,13 +161,15 @@ class _Thread {
     var pngWidget = ValueListenableBuilder(
         valueListenable: minimized,
         builder: (BuildContext context, bool val, Widget? child) {
-          return val ?  Container(): Image.memory(pngData);
+          return val ? Container() : Image.memory(pngData);
         });
     var threadWidget = _ThreadWidget(comments, threadPosition, minimized);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay, below: fixmaOverlayEntry));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: fixmaOverlayEntry));
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        Overlay.of(context)?.insert(pngOverlay, below: fixmaOverlayEntry));
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        Overlay.of(context)?.insert(threadEntry, above: fixmaOverlayEntry));
     return _Thread()
       ..entry = threadEntry
       ..pngEntry = pngOverlay
@@ -178,7 +184,8 @@ class _Thread {
 
   rebuildThread(BuildContext context, OverlayEntry? fixmaOverlayEntry) {
     minimized.value = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngEntry, below: fixmaOverlayEntry));
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        Overlay.of(context)?.insert(pngEntry, below: fixmaOverlayEntry));
     WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry, above: fixmaOverlayEntry));
   }
 }
@@ -218,42 +225,43 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
   }
 
   Widget commentThread(List<String> previousComments) {
-    Widget bottomBar() => SizedBox(
-        height: 35,
-        child: Row(
-          children: [
-            // if no comments, show cross button, or show minimize button
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  isMinimized = true;
-                });
-                widget.minimized.value = true;
-              },
-              icon: Icon(
-                comments.isEmpty? Icons.close : Icons.minimize,
-                color: Colors.blue,
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            Expanded(child: Container()),
-            IconButton(
-              onPressed: () {
-                final form = formKey.currentState!;
-                if (form.validate()) {
-                  form.save();
-                }
-              },
-              icon: const Icon(
-                Icons.arrow_circle_right_outlined,
-                color: Colors.blue,
-              ),
-              padding: EdgeInsets.zero,
-            )
-          ],
-        ));
+    Widget bottomBar() =>
+        SizedBox(
+            height: 35,
+            child: Row(
+              children: [
+                // if no comments, show cross button, or show minimize button
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      isMinimized = true;
+                    });
+                    widget.minimized.value = true;
+                  },
+                  icon: Icon(
+                    comments.isEmpty ? Icons.close : Icons.minimize,
+                    color: Colors.blue,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+                Expanded(child: Container()),
+                IconButton(
+                  onPressed: () {
+                    final form = formKey.currentState!;
+                    if (form.validate()) {
+                      form.save();
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.arrow_circle_right_outlined,
+                    color: Colors.blue,
+                  ),
+                  padding: EdgeInsets.zero,
+                )
+              ],
+            ));
     List<Widget> children = <Widget>[];
-    for(var comment in comments) {
+    for (var comment in comments) {
       children.add(Text(comment));
     }
     children.add(TextFormField(
