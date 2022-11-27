@@ -1,6 +1,9 @@
 // library fixma_feedback_flutter;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:native_screenshot_ext/native_screenshot_ext.dart';
 
 import 'primitive_wrapper.dart';
 
@@ -16,7 +19,6 @@ class Fixma {
   Offset offset = Offset(0, 200);
   OverlayEntry? fixmaOverlayEntry;
   List<_Thread> threads = <_Thread>[];
-  int currentThreadIndex = 0;
 
   hideOverlay() {
     fixmaOverlayEntry?.remove();
@@ -26,21 +28,41 @@ class Fixma {
   showOverlay(BuildContext context) {
     if (fixmaOverlayEntry == null) {
       fixmaOverlayEntry = OverlayEntry(
-          builder: (context) => Positioned(
-              left: offset.dx,
-              top: offset.dy,
-              child: GestureDetector(
-                  onPanUpdate: (details) {
-                    offset += details.delta;
-                    fixmaOverlayEntry!.markNeedsBuild();
-                  },
-                  child: fixmaBar(context))));
-      var overlay = Overlay.of(context);
-      WidgetsBinding.instance.addPostFrameCallback((_) => overlay?.insert(fixmaOverlayEntry!));
+          builder: (context) =>
+              Positioned(
+                  left: offset.dx,
+                  top: offset.dy,
+                  child: GestureDetector(
+                      onPanUpdate: (details) {
+                        offset += details.delta;
+                        fixmaOverlayEntry!.markNeedsBuild();
+                      },
+                      child: FixmaBar(fixmaOverlayEntry, threads))));
+      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixmaOverlayEntry!));
     }
   }
+}
+class FixmaBar extends StatefulWidget {
+  final OverlayEntry? fixmaOverlayEntry;
+  final List<_Thread> threads;
 
-  Widget fixmaBar(BuildContext context) {
+  FixmaBar(this.fixmaOverlayEntry, this.threads);
+
+  @override
+  State<StatefulWidget> createState() {
+   return FixmaBarState();
+  }
+}
+class FixmaBarState extends State<FixmaBar> {
+  bool hide = false;
+  int currentThreadIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hide) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { addThreadWithScreenshotOnFixBarAbsence();});
+      return Container();
+    }
     return Material(
         elevation: 10,
         shape: RoundedRectangleBorder(
@@ -54,13 +76,10 @@ class Fixma {
                 height: 30.0,
                 width: 30.0,
                 child: IconButton(
-                  onPressed: () {
-                    var newThread = _Thread.addNewThread(context);
-                    if (threads.isNotEmpty) {
-                      threads[currentThreadIndex].hideThread();
-                    }
-                    currentThreadIndex = threads.length;
-                    threads.add(newThread);
+                  onPressed: () async {
+                    setState(() {
+                      hide = true;
+                    });
                   },
                   icon: const Icon(Icons.add_comment),
                   padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
@@ -76,10 +95,10 @@ class Fixma {
                 width: 30.0,
                 child: IconButton(
                     onPressed: () {
-                      if (threads.isNotEmpty) {
-                        threads[currentThreadIndex].hideThread();
-                        currentThreadIndex = (currentThreadIndex - 1) % threads.length;
-                        threads[currentThreadIndex].rebuildThread(context);
+                      if (widget.threads.isNotEmpty) {
+                        widget.threads[currentThreadIndex].hideThread();
+                        currentThreadIndex = (currentThreadIndex - 1) % widget.threads.length;
+                        widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -89,10 +108,10 @@ class Fixma {
                 width: 30.0,
                 child: IconButton(
                     onPressed: () {
-                      if (threads.isNotEmpty) {
-                        threads[currentThreadIndex].hideThread();
-                        currentThreadIndex = (currentThreadIndex + 1) % threads.length;
-                        threads[currentThreadIndex].rebuildThread(context);
+                      if (widget.threads.isNotEmpty) {
+                        widget.threads[currentThreadIndex].hideThread();
+                        currentThreadIndex = (currentThreadIndex + 1) % widget.threads.length;
+                        widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -101,7 +120,19 @@ class Fixma {
         ));
   }
 
-  displayAllThreads() {}
+  void addThreadWithScreenshotOnFixBarAbsence () async {
+    if (widget.threads.isNotEmpty) {
+      widget.threads[currentThreadIndex].hideThread();
+    }
+
+    Uint8List pngData = await NativeScreenshot.takeScreenshotImage() as Uint8List;
+    var newThread = _Thread.addNewThread(context, pngData, widget.fixmaOverlayEntry);
+    currentThreadIndex = widget.threads.length;
+    widget.threads.add(newThread);
+    setState(() {
+      hide = false;
+    });
+  }
 }
 
 class _ThreadData {
@@ -113,49 +144,61 @@ class _ThreadData {
 
 class _Thread {
   late OverlayEntry entry;
+  late OverlayEntry pngEntry;
   late _ThreadData threadData;
+  late ValueNotifier<bool> minimized;
 
   _Thread();
 
-  factory _Thread.addNewThread(BuildContext context) {
+  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, OverlayEntry? fixmaOverlayEntry) {
     List<String> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
-    var threadWidget = _ThreadWidget(comments, threadPosition);
+    ValueNotifier<bool> minimized = ValueNotifier(false);
+    var pngWidget = ValueListenableBuilder(
+        valueListenable: minimized,
+        builder: (BuildContext context, bool val, Widget? child) {
+          return val ?  Container(): Image.memory(pngData);
+        });
+    var threadWidget = _ThreadWidget(comments, threadPosition, minimized);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry));
+    OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay, below: fixmaOverlayEntry));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: fixmaOverlayEntry));
     return _Thread()
       ..entry = threadEntry
+      ..pngEntry = pngOverlay
+      ..minimized = minimized
       ..threadData = _ThreadData(comments, threadPosition);
   }
 
   hideThread() {
     entry.remove();
+    pngEntry.remove();
   }
 
-  rebuildThread(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry));
+  rebuildThread(BuildContext context, OverlayEntry? fixmaOverlayEntry) {
+    minimized.value = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngEntry, below: fixmaOverlayEntry));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry, above: fixmaOverlayEntry));
   }
 }
 
 class _ThreadWidget extends StatefulWidget {
   final List<String> comments;
   final PrimitiveWrapper<Offset>? threadPosition;
+  final ValueNotifier<bool> minimized;
 
-  _ThreadWidget(this.comments, this.threadPosition);
+  const _ThreadWidget(this.comments, this.threadPosition, this.minimized);
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();
 
-  void minimizeExternal() {
-
-  }
 }
 
 class _ThreadWidgetState extends State<_ThreadWidget> {
   late List<String> comments;
   bool? isMinimized;
   PrimitiveWrapper<Offset>? threadPosition;
-  bool? isHidden;
   bool? placeIsLocked;
   final fieldText = TextEditingController();
   static final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -165,22 +208,12 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
     super.initState();
     comments = widget.comments;
     isMinimized = false;
-    isHidden = false;
     threadPosition = widget.threadPosition;
     placeIsLocked = false;
   }
 
-  void minimizeExternal() {
-    setState(() {
-      isMinimized = true;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (isHidden == true) {
-      return Container();
-    }
     return isMinimized == true ? minimizedThread() : commentThread(widget.comments);
   }
 
@@ -195,6 +228,7 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
                 setState(() {
                   isMinimized = true;
                 });
+                widget.minimized.value = true;
               },
               icon: Icon(
                 comments.isEmpty? Icons.close : Icons.minimize,
@@ -281,10 +315,32 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
                       setState(() {
                         isMinimized = false;
                       });
+                      widget.minimized.value = false;
                     },
                     icon: const Icon(
                       Icons.line_axis,
                       color: Colors.blue,
                     )))));
   }
+}
+
+class ImageWidget extends StatefulWidget {
+  final Uint8List pngData;
+
+  const ImageWidget(this.pngData);
+
+  @override
+  State<StatefulWidget> createState() {
+    return ImageWidgetState();
+  }
+
+}
+
+class ImageWidgetState extends State<ImageWidget> {
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.memory(widget.pngData);
+  }
+
 }
