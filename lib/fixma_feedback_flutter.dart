@@ -44,10 +44,11 @@ class Fixma {
 }
 
 class FixmaBar extends StatefulWidget {
+  /// Never remove it; removing it didn't quite work. So hiding it instead using `hide`.
   final OverlayEntry? fixmaOverlayEntry;
   final List<_Thread> threads;
 
-  FixmaBar(this.fixmaOverlayEntry, this.threads);
+  const FixmaBar(this.fixmaOverlayEntry, this.threads);
 
   @override
   State<StatefulWidget> createState() {
@@ -55,16 +56,28 @@ class FixmaBar extends StatefulWidget {
   }
 }
 
+enum FixBarStateEnum {
+  visible,
+  hidingForSnapshot,
+  hidingAfterSnapshot,
+}
+
 class FixmaBarState extends State<FixmaBar> {
-  bool hide = false;
+  FixBarStateEnum hide = FixBarStateEnum.visible;
   int currentThreadIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    if (hide) {
+    // Had to create states to avoid this being called again and again for some reason due to rebuild through
+    // addThreadWithScreenshotOnFixBarAbsence -> hideThread -> removing Entries even when not needed to remove.
+    if (hide == FixBarStateEnum.hidingForSnapshot) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         addThreadWithScreenshotOnFixBarAbsence();
       });
+      return Container();
+    }
+
+    if (hide == FixBarStateEnum.hidingAfterSnapshot) {
       return Container();
     }
     return Material(
@@ -81,8 +94,11 @@ class FixmaBarState extends State<FixmaBar> {
                 width: 30.0,
                 child: IconButton(
                   onPressed: () async {
+                    if (widget.threads.isNotEmpty) {
+                      widget.threads[currentThreadIndex].hideThreadBoxAndImage();
+                    }
                     setState(() {
-                      hide = true;
+                      hide = FixBarStateEnum.hidingForSnapshot;
                     });
                   },
                   icon: const Icon(Icons.add_comment),
@@ -100,7 +116,7 @@ class FixmaBarState extends State<FixmaBar> {
                 child: IconButton(
                     onPressed: () {
                       if (widget.threads.isNotEmpty) {
-                        widget.threads[currentThreadIndex].hideThread();
+                        widget.threads[currentThreadIndex].hideThreadBoxAndImage();
                         currentThreadIndex = (currentThreadIndex - 1) % widget.threads.length;
                         widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
@@ -113,7 +129,7 @@ class FixmaBarState extends State<FixmaBar> {
                 child: IconButton(
                     onPressed: () {
                       if (widget.threads.isNotEmpty) {
-                        widget.threads[currentThreadIndex].hideThread();
+                        widget.threads[currentThreadIndex].hideThreadBoxAndImage();
                         currentThreadIndex = (currentThreadIndex + 1) % widget.threads.length;
                         widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
@@ -125,17 +141,23 @@ class FixmaBarState extends State<FixmaBar> {
   }
 
   void addThreadWithScreenshotOnFixBarAbsence() async {
-    if (widget.threads.isNotEmpty) {
-      widget.threads[currentThreadIndex].hideThread();
-    }
-
     Uint8List pngData = await NativeScreenshot.takeScreenshotImage() as Uint8List;
-    var newThread = _Thread.addNewThread(context, pngData, widget.fixmaOverlayEntry);
+
+    var newThread = _Thread.addNewThread(context, pngData, makeFixmaOverlayVisible);
     currentThreadIndex = widget.threads.length;
     widget.threads.add(newThread);
+    // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
     setState(() {
-      hide = false;
+      hide = FixBarStateEnum.hidingAfterSnapshot;
     });
+  }
+
+  void makeFixmaOverlayVisible() {
+    if (hide != FixBarStateEnum.visible) {
+      setState(() {
+        hide = FixBarStateEnum.visible;
+      });
+    }
   }
 }
 
@@ -147,64 +169,67 @@ class _ThreadData {
 }
 
 class _Thread {
-  late OverlayEntry entry;
-  late OverlayEntry pngEntry;
+  late OverlayEntry threadBoxEntry;
+  late OverlayEntry imageEntry;
   late _ThreadData threadData;
-  late ValueNotifier<bool> minimized;
 
   _Thread();
 
-  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, OverlayEntry? fixmaOverlayEntry) {
+  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, void Function() makeFixmaOverlayVisible) {
     List<String> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
-    ValueNotifier<bool> minimized = ValueNotifier(false);
-    var pngWidget = ValueListenableBuilder(
-        valueListenable: minimized,
-        builder: (BuildContext context, bool val, Widget? child) {
-          return val ? Container() : Image.memory(pngData);
-        });
-    var threadWidget = _ThreadWidget(comments, threadPosition, minimized);
+    var pngWidget = Image.memory(pngData);
+    var threadWidget = _ThreadWidget(comments, threadPosition, makeFixmaOverlayVisible);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        Overlay.of(context)?.insert(pngOverlay, below: fixmaOverlayEntry));
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        Overlay.of(context)?.insert(threadEntry, above: fixmaOverlayEntry));
+    // Bad pattern, but no choice for now.
+    threadWidget.threadMinimizingCallback = () {
+      threadEntry.remove();
+      pngOverlay.remove();
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: pngOverlay));
     return _Thread()
-      ..entry = threadEntry
-      ..pngEntry = pngOverlay
-      ..minimized = minimized
+      ..threadBoxEntry = threadEntry
+      ..imageEntry = pngOverlay
       ..threadData = _ThreadData(comments, threadPosition);
   }
 
-  hideThread() {
-    entry.remove();
-    pngEntry.remove();
+  hideThreadBoxAndImage() {
+    if(threadBoxEntry.mounted) {
+      threadBoxEntry.remove();
+    }
+    if(imageEntry.mounted) {
+      imageEntry.remove();
+    }
   }
 
   rebuildThread(BuildContext context, OverlayEntry? fixmaOverlayEntry) {
-    minimized.value = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        Overlay.of(context)?.insert(pngEntry, below: fixmaOverlayEntry));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(entry, above: fixmaOverlayEntry));
+    if(!imageEntry.mounted) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixmaOverlayEntry));
+    }
+    if(!threadBoxEntry.mounted) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixmaOverlayEntry));
+    }
   }
 }
 
 class _ThreadWidget extends StatefulWidget {
   final List<String> comments;
   final PrimitiveWrapper<Offset>? threadPosition;
-  final ValueNotifier<bool> minimized;
+  late final void Function() threadMinimizingCallback;
+  final void Function() makeFixmaOverlayVisible;
 
-  const _ThreadWidget(this.comments, this.threadPosition, this.minimized);
+  _ThreadWidget(this.comments, this.threadPosition, this.makeFixmaOverlayVisible);
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();
-
 }
 
 class _ThreadWidgetState extends State<_ThreadWidget> {
   late List<String> comments;
-  bool? isMinimized;
   PrimitiveWrapper<Offset>? threadPosition;
   bool? placeIsLocked;
   final fieldText = TextEditingController();
@@ -214,52 +239,48 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
   void initState() {
     super.initState();
     comments = widget.comments;
-    isMinimized = false;
     threadPosition = widget.threadPosition;
     placeIsLocked = false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return isMinimized == true ? minimizedThread() : commentThread(widget.comments);
+    return commentThread(widget.comments);
   }
 
   Widget commentThread(List<String> previousComments) {
-    Widget bottomBar() =>
-        SizedBox(
-            height: 35,
-            child: Row(
-              children: [
-                // if no comments, show cross button, or show minimize button
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      isMinimized = true;
-                    });
-                    widget.minimized.value = true;
-                  },
-                  icon: Icon(
-                    comments.isEmpty ? Icons.close : Icons.minimize,
-                    color: Colors.blue,
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
-                Expanded(child: Container()),
-                IconButton(
-                  onPressed: () {
-                    final form = formKey.currentState!;
-                    if (form.validate()) {
-                      form.save();
-                    }
-                  },
-                  icon: const Icon(
-                    Icons.arrow_circle_right_outlined,
-                    color: Colors.blue,
-                  ),
-                  padding: EdgeInsets.zero,
-                )
-              ],
-            ));
+    Widget bottomBar() => SizedBox(
+        height: 35,
+        child: Row(
+          children: [
+            // if no comments, show cross button, or show minimize button
+            IconButton(
+              onPressed: () {
+                widget.threadMinimizingCallback();
+                widget.makeFixmaOverlayVisible();
+              },
+              icon: Icon(
+                comments.isEmpty ? Icons.close : Icons.minimize,
+                color: Colors.blue,
+              ),
+              padding: EdgeInsets.zero,
+            ),
+            Expanded(child: Container()),
+            IconButton(
+              onPressed: () {
+                final form = formKey.currentState!;
+                if (form.validate()) {
+                  form.save();
+                }
+              },
+              icon: const Icon(
+                Icons.arrow_circle_right_outlined,
+                color: Colors.blue,
+              ),
+              padding: EdgeInsets.zero,
+            )
+          ],
+        ));
     List<Widget> children = <Widget>[];
     for (var comment in comments) {
       children.add(Text(comment));
@@ -311,6 +332,7 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
   }
 
   Widget minimizedThread() {
+    return Container();
     return Positioned(
         left: 0,
         top: threadPosition?.value.dy,
@@ -321,9 +343,9 @@ class _ThreadWidgetState extends State<_ThreadWidget> {
                 child: IconButton(
                     onPressed: () {
                       setState(() {
-                        isMinimized = false;
+                        // isMinimized = false;
                       });
-                      widget.minimized.value = false;
+                      // widget.minimized.value = false;
                     },
                     icon: const Icon(
                       Icons.line_axis,
