@@ -28,16 +28,15 @@ class Fixma {
   showOverlay(BuildContext context) {
     if (fixmaOverlayEntry == null) {
       fixmaOverlayEntry = OverlayEntry(
-          builder: (context) =>
-              Positioned(
-                  left: offset.dx,
-                  top: offset.dy,
-                  child: GestureDetector(
-                      onPanUpdate: (details) {
-                        offset += details.delta;
-                        fixmaOverlayEntry!.markNeedsBuild();
-                      },
-                      child: FixmaBar(fixmaOverlayEntry, threads))));
+          builder: (context) => Positioned(
+              left: offset.dx,
+              top: offset.dy,
+              child: GestureDetector(
+                  onPanUpdate: (details) {
+                    offset += details.delta;
+                    fixmaOverlayEntry!.markNeedsBuild();
+                  },
+                  child: FixmaBar(fixmaOverlayEntry, threads))));
       WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixmaOverlayEntry!));
     }
   }
@@ -64,7 +63,7 @@ enum FixBarStateEnum {
 
 class FixmaBarState extends State<FixmaBar> {
   FixBarStateEnum hide = FixBarStateEnum.visible;
-  int currentThreadIndex = 0;
+  int currentVisibleThread = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +93,14 @@ class FixmaBarState extends State<FixmaBar> {
                 width: 30.0,
                 child: IconButton(
                   onPressed: () async {
+                    // Avoid adding new threads when already showing an image and a thread. Ask to minimize first.
+                    if (widget.threads.isNotEmpty && widget.threads[currentVisibleThread].isNotHidden()) {
+                      // TODO: Not working.
+                      inform(context, 'Minimize the current thread before adding new comment');
+                      return;
+                    }
                     if (widget.threads.isNotEmpty) {
-                      widget.threads[currentThreadIndex].hideThreadBoxAndImage();
+                      widget.threads[currentVisibleThread].hideThreadBoxAndImage();
                     }
                     setState(() {
                       hide = FixBarStateEnum.hidingForSnapshot;
@@ -116,9 +121,9 @@ class FixmaBarState extends State<FixmaBar> {
                 child: IconButton(
                     onPressed: () {
                       if (widget.threads.isNotEmpty) {
-                        widget.threads[currentThreadIndex].hideThreadBoxAndImage();
-                        currentThreadIndex = (currentThreadIndex - 1) % widget.threads.length;
-                        widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
+                        widget.threads[currentVisibleThread].hideThreadBoxAndImage();
+                        currentVisibleThread = (currentVisibleThread - 1) % widget.threads.length;
+                        widget.threads[currentVisibleThread].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -129,9 +134,9 @@ class FixmaBarState extends State<FixmaBar> {
                 child: IconButton(
                     onPressed: () {
                       if (widget.threads.isNotEmpty) {
-                        widget.threads[currentThreadIndex].hideThreadBoxAndImage();
-                        currentThreadIndex = (currentThreadIndex + 1) % widget.threads.length;
-                        widget.threads[currentThreadIndex].rebuildThread(context, widget.fixmaOverlayEntry);
+                        widget.threads[currentVisibleThread].hideThreadBoxAndImage();
+                        currentVisibleThread = (currentVisibleThread + 1) % widget.threads.length;
+                        widget.threads[currentVisibleThread].rebuildThread(context, widget.fixmaOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -144,7 +149,7 @@ class FixmaBarState extends State<FixmaBar> {
     Uint8List pngData = await NativeScreenshot.takeScreenshotImage() as Uint8List;
 
     var newThread = _Thread.addNewThread(context, pngData, makeFixmaOverlayVisible);
-    currentThreadIndex = widget.threads.length;
+    currentVisibleThread = widget.threads.length;
     widget.threads.add(newThread);
     // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
     setState(() {
@@ -158,6 +163,18 @@ class FixmaBarState extends State<FixmaBar> {
         hide = FixBarStateEnum.visible;
       });
     }
+  }
+
+  static inform(BuildContext? context, String? textMsg, {int? milliseconds}) {
+    if (context == null || textMsg == null) {
+      return;
+    }
+    var sn = SnackBar(
+      content: Text(textMsg),
+      elevation: 20,
+      duration: Duration(milliseconds: milliseconds ?? 1000),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(sn);
   }
 }
 
@@ -195,21 +212,25 @@ class _Thread {
       ..threadData = _ThreadData(comments, threadPosition);
   }
 
+  bool isNotHidden() {
+    return threadBoxEntry.mounted || imageEntry.mounted;
+  }
+
   hideThreadBoxAndImage() {
-    if(threadBoxEntry.mounted) {
+    if (threadBoxEntry.mounted) {
       threadBoxEntry.remove();
     }
-    if(imageEntry.mounted) {
+    if (imageEntry.mounted) {
       imageEntry.remove();
     }
   }
 
   rebuildThread(BuildContext context, OverlayEntry? fixmaOverlayEntry) {
-    if(!imageEntry.mounted) {
+    if (!imageEntry.mounted) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixmaOverlayEntry));
     }
-    if(!threadBoxEntry.mounted) {
+    if (!threadBoxEntry.mounted) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixmaOverlayEntry));
     }
