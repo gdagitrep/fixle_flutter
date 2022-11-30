@@ -1,7 +1,9 @@
 // library fixma_feedback_flutter;
 
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:fixma_feedback_flutter/thread_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:native_screenshot_ext/native_screenshot_ext.dart';
 
@@ -146,7 +148,7 @@ class FixmaBarState extends State<FixmaBar> {
   }
 
   void addThreadWithScreenshotOnFixBarAbsence() async {
-    Uint8List pngData = await NativeScreenshot.takeScreenshotImage() as Uint8List;
+    Uint8List pngData = await NativeScreenshot.takeScreenshotImage(1) as Uint8List;
 
     var newThread = _Thread.addNewThread(context, pngData, makeFixmaOverlayVisible);
     currentVisibleThread = widget.threads.length;
@@ -178,17 +180,10 @@ class FixmaBarState extends State<FixmaBar> {
   }
 }
 
-class _ThreadData {
-  List<String> comments = [];
-  PrimitiveWrapper<Offset>? threadPosition;
-
-  _ThreadData(this.comments, this.threadPosition);
-}
-
 class _Thread {
   late OverlayEntry threadBoxEntry;
   late OverlayEntry imageEntry;
-  late _ThreadData threadData;
+  late ThreadData threadData;
 
   _Thread();
 
@@ -196,7 +191,7 @@ class _Thread {
     List<String> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
     var pngWidget = Image.memory(pngData);
-    var threadWidget = _ThreadWidget(comments, threadPosition, makeFixmaOverlayVisible);
+    var threadWidget = ThreadWidget(comments, threadPosition, makeFixmaOverlayVisible);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
     // Bad pattern, but no choice for now.
@@ -209,7 +204,7 @@ class _Thread {
     return _Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
-      ..threadData = _ThreadData(comments, threadPosition);
+      ..threadData = ThreadData(comments, threadPosition, pngData);
   }
 
   bool isNotHidden() {
@@ -237,161 +232,4 @@ class _Thread {
   }
 }
 
-class _ThreadWidget extends StatefulWidget {
-  final List<String> comments;
-  final PrimitiveWrapper<Offset>? threadPosition;
-  late final void Function() threadMinimizingCallback;
-  final void Function() makeFixmaOverlayVisible;
 
-  _ThreadWidget(this.comments, this.threadPosition, this.makeFixmaOverlayVisible);
-
-  @override
-  State<StatefulWidget> createState() => _ThreadWidgetState();
-}
-
-class _ThreadWidgetState extends State<_ThreadWidget> {
-  late List<String> comments;
-  PrimitiveWrapper<Offset>? threadPosition;
-  bool? placeIsLocked;
-  final fieldText = TextEditingController();
-  static final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    comments = widget.comments;
-    threadPosition = widget.threadPosition;
-    placeIsLocked = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return commentThread(widget.comments);
-  }
-
-  Widget commentThread(List<String> previousComments) {
-    Widget bottomBar() => SizedBox(
-        height: 35,
-        child: Row(
-          children: [
-            // if no comments, show cross button, or show minimize button
-            IconButton(
-              onPressed: () {
-                widget.threadMinimizingCallback();
-                widget.makeFixmaOverlayVisible();
-              },
-              icon: Icon(
-                comments.isEmpty ? Icons.close : Icons.minimize,
-                color: Colors.blue,
-              ),
-              padding: EdgeInsets.zero,
-            ),
-            Expanded(child: Container()),
-            IconButton(
-              onPressed: () {
-                final form = formKey.currentState!;
-                if (form.validate()) {
-                  form.save();
-                }
-              },
-              icon: const Icon(
-                Icons.arrow_circle_right_outlined,
-                color: Colors.blue,
-              ),
-              padding: EdgeInsets.zero,
-            )
-          ],
-        ));
-    List<Widget> children = <Widget>[];
-    for (var comment in comments) {
-      children.add(Text(comment));
-    }
-    children.add(TextFormField(
-      controller: fieldText,
-      textInputAction: TextInputAction.next,
-      textCapitalization: TextCapitalization.sentences,
-      keyboardType: TextInputType.multiline,
-      maxLines: 10,
-      minLines: 1,
-      decoration: const InputDecoration(
-        hintText: 'Add comment',
-      ),
-      validator: (val) {
-        if (val == null || val.isEmpty) {
-          return 'Enter comment';
-        }
-        return null;
-      },
-      onSaved: (val) {
-        comments.add(val!);
-        fieldText.clear();
-        setState(() {
-          placeIsLocked = true;
-        });
-      },
-    ));
-    children.add(bottomBar());
-
-    return Positioned(
-        left: threadPosition?.value.dx,
-        top: threadPosition?.value.dy,
-        child: GestureDetector(
-            onPanUpdate: (details) {
-              if (placeIsLocked == false) {
-                setState(() {
-                  threadPosition?.value += details.delta;
-                });
-              }
-            },
-            child: Material(
-                elevation: 10,
-                child: SizedBox(
-                    width: 200,
-                    child: Padding(
-                        padding: const EdgeInsets.fromLTRB(5, 0, 10, 0),
-                        child: Form(key: formKey, child: Column(children: children)))))));
-  }
-
-  Widget minimizedThread() {
-    return Container();
-    return Positioned(
-        left: 0,
-        top: threadPosition?.value.dy,
-        child: Material(
-            elevation: 8,
-            child: SizedBox(
-                width: 50,
-                child: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        // isMinimized = false;
-                      });
-                      // widget.minimized.value = false;
-                    },
-                    icon: const Icon(
-                      Icons.line_axis,
-                      color: Colors.blue,
-                    )))));
-  }
-}
-
-class ImageWidget extends StatefulWidget {
-  final Uint8List pngData;
-
-  const ImageWidget(this.pngData);
-
-  @override
-  State<StatefulWidget> createState() {
-    return ImageWidgetState();
-  }
-
-}
-
-class ImageWidgetState extends State<ImageWidget> {
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.memory(widget.pngData);
-  }
-
-}
