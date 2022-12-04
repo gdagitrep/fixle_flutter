@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:fixma_feedback_flutter/thread_data.dart';
 import 'package:fixma_feedback_flutter/thread_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:native_screenshot_ext/native_screenshot_ext.dart';
@@ -191,7 +192,8 @@ class _Thread {
     List<String> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
     var pngWidget = Image.memory(pngData);
-    var threadWidget = ThreadWidget(comments, threadPosition, makeFixmaOverlayVisible);
+    var threadData = ThreadData.fromNewThread(comments, threadPosition, pngData);
+    var threadWidget = ThreadWidget(threadData, makeFixmaOverlayVisible);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
     // Bad pattern, but no choice for now.
@@ -204,7 +206,7 @@ class _Thread {
     return _Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
-      ..threadData = ThreadData(comments, threadPosition, pngData);
+      ..threadData = threadData;
   }
 
   bool isNotHidden() {

@@ -1,23 +1,13 @@
-import 'dart:typed_data';
-import 'dart:ui';
-
 import 'package:fixma_feedback_flutter/primitive_wrapper.dart';
+import 'package:fixma_feedback_flutter/thread_data.dart';
 import 'package:flutter/material.dart';
 
-class ThreadData {
-  List<String> comments = [];
-  PrimitiveWrapper<Offset>? threadPosition;
-
-  ThreadData(this.comments, this.threadPosition, Uint8List pngData);
-}
-
 class ThreadWidget extends StatefulWidget {
-  final List<String> comments;
-  final PrimitiveWrapper<Offset>? threadPosition;
+  final ThreadData threadData;
   late final void Function() threadMinimizingCallback;
   final void Function() makeFixmaOverlayVisible;
 
-  ThreadWidget(this.comments, this.threadPosition, this.makeFixmaOverlayVisible);
+  ThreadWidget(this.threadData, this.makeFixmaOverlayVisible);
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();
@@ -33,14 +23,14 @@ class _ThreadWidgetState extends State<ThreadWidget> {
   @override
   void initState() {
     super.initState();
-    comments = widget.comments;
-    threadPosition = widget.threadPosition;
+    comments = widget.threadData.comments;
+    threadPosition = widget.threadData.threadPosition;
     placeIsLocked = false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return commentThread(widget.comments);
+    return commentThread(widget.threadData.comments);
   }
 
   Widget commentThread(List<String> previousComments) {
@@ -99,9 +89,11 @@ class _ThreadWidgetState extends State<ThreadWidget> {
       onSaved: (val) {
         comments.add(val!);
         fieldText.clear();
+        widget.threadData.saveThreadData();
         setState(() {
           placeIsLocked = true;
         });
+        // printThreadData(widget.threadData);
       },
     ));
     children.add(bottomBar());
@@ -146,5 +138,12 @@ class _ThreadWidgetState extends State<ThreadWidget> {
                       Icons.line_axis,
                       color: Colors.blue,
                     )))));
+  }
+
+  printThreadData(ThreadData threadData) {
+    debugPrint("New thread saved:\n");
+    debugPrint(String.fromCharCodes(threadData.pngData));
+    debugPrint("\nComments:${threadData.comments.join(',')}");
+
   }
 }

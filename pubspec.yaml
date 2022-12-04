@@ -6,11 +6,16 @@ homepage:
 environment:
   sdk: '>=2.18.4 <3.0.0'
   flutter: ">=1.17.0"
-
 dependencies:
   flutter:
     sdk: flutter
-  native_screenshot_ext: ^1.1.0
+  native_screenshot_ext: ^1.2.0
+  dio: ^4.0.6
+  uuid: ^3.0.6
+  logger: ^1.1.0
+
+  dart_utils:
+    git: https://github.com/gdagitrep/dart-utils
 dev_dependencies:
   flutter_test:
     sdk: flutter
