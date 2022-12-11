@@ -1,4 +1,4 @@
-name: fixma_feedback_flutter
+name: fixle_feedback_flutter
 description: A new Flutter package project.
 version: 0.0.1
 homepage:
@@ -12,10 +12,10 @@ dependencies:
   native_screenshot_ext: ^1.2.0
   dio: ^4.0.6
   uuid: ^3.0.6
-  logger: ^1.1.0
 
   dart_utils:
     git: https://github.com/gdagitrep/dart-utils
+  logger: ^1.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,13 +1,13 @@
-import 'package:fixma_feedback_flutter/primitive_wrapper.dart';
-import 'package:fixma_feedback_flutter/thread_data.dart';
+import 'package:fixle_feedback_flutter/primitive_wrapper.dart';
+import 'package:fixle_feedback_flutter/thread_data.dart';
 import 'package:flutter/material.dart';
 
 class ThreadWidget extends StatefulWidget {
   final ThreadData threadData;
   late final void Function() threadMinimizingCallback;
-  final void Function() makeFixmaOverlayVisible;
+  final void Function() makeFixleOverlayVisible;
 
-  ThreadWidget(this.threadData, this.makeFixmaOverlayVisible);
+  ThreadWidget(this.threadData, this.makeFixleOverlayVisible);
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();
@@ -18,7 +18,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
   PrimitiveWrapper<Offset>? threadPosition;
   bool? placeIsLocked;
   final fieldText = TextEditingController();
-  static final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
             IconButton(
               onPressed: () {
                 widget.threadMinimizingCallback();
-                widget.makeFixmaOverlayVisible();
+                widget.makeFixleOverlayVisible();
               },
               icon: Icon(
                 comments.isEmpty ? Icons.close : Icons.minimize,
@@ -138,12 +138,5 @@ class _ThreadWidgetState extends State<ThreadWidget> {
                       Icons.line_axis,
                       color: Colors.blue,
                     )))));
-  }
-
-  printThreadData(ThreadData threadData) {
-    debugPrint("New thread saved:\n");
-    debugPrint(String.fromCharCodes(threadData.pngData));
-    debugPrint("\nComments:${threadData.comments.join(',')}");
-
   }
 }
