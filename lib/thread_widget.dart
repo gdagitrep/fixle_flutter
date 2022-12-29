@@ -6,15 +6,16 @@ class ThreadWidget extends StatefulWidget {
   final ThreadData threadData;
   late final void Function() threadMinimizingCallback;
   final void Function() makeFixleOverlayVisible;
+  final String projectId;
 
-  ThreadWidget(this.threadData, this.makeFixleOverlayVisible);
+  ThreadWidget(this.threadData, this.makeFixleOverlayVisible, this.projectId);
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();
 }
 
 class _ThreadWidgetState extends State<ThreadWidget> {
-  late List<String> comments;
+  late List<Comment> comments;
   PrimitiveWrapper<Offset>? threadPosition;
   bool? placeIsLocked;
   final fieldText = TextEditingController();
@@ -33,7 +34,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
     return commentThread(widget.threadData.comments);
   }
 
-  Widget commentThread(List<String> previousComments) {
+  Widget commentThread(List<Comment> previousComments) {
     Widget bottomBar() => SizedBox(
         height: 35,
         child: Row(
@@ -68,7 +69,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
         ));
     List<Widget> children = <Widget>[];
     for (var comment in comments) {
-      children.add(Text(comment));
+      children.add(Text(comment.commentText));
     }
     children.add(TextFormField(
       controller: fieldText,
@@ -87,9 +88,11 @@ class _ThreadWidgetState extends State<ThreadWidget> {
         return null;
       },
       onSaved: (val) {
-        comments.add(val!);
+        comments.add(Comment()
+          ..commentText = val!
+          ..commentorEmail = "yetToFill");
         fieldText.clear();
-        widget.threadData.saveThreadData();
+        widget.threadData.saveThreadData(widget.projectId);
         setState(() {
           placeIsLocked = true;
         });

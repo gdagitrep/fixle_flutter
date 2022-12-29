@@ -10,9 +10,9 @@ import 'package:logger/logger.dart';
 class NetworkRequestUtilsFixle {
   static const String AZ_BLOB_STORAGE_URL = "https://mealblobstorage.blob.core.windows.net/";
   static const String BLOB_CDN_URL = "https://dsqcdn.azureedge.net/threadimages/";
-  static const String _THREAD_ADD_URL = "https://kadamapi.azurewebsites.net/thread/addThread";
-  static const String _THREAD_edit_URL = "https://kadamapi.azurewebsites.net/thread/editThread?threadId=";
-  static const String _THREADS_GET_URL = "https://kadamapi.azurewebsites.net/thread/getThreads?apiKey=";
+  static const String _THREAD_ADD_URL = "https://fixleapi.azurewebsites.net/thread/addThread";
+  static const String _THREAD_edit_URL = "https://fixleapi.azurewebsites.net/thread/editThread?threadId=";
+  static const String _THREADS_GET_URL = "https://fixleapi.azurewebsites.net/thread/getThreads?apiKey=";
   static Logger logger = Logger();
 
   static Future<bool> putToBlobStorage(String imageWithoutContainerName, String sasSuffix, Uint8List postData) async {
@@ -55,10 +55,10 @@ class NetworkRequestUtilsFixle {
     return response.data;
   }
 
-  static Future<String?> addThreadDataToApi(ThreadData threadData, String apiKey) async {
+  static Future<String?> addThreadDataToApi(ThreadData threadData, String projectId) async {
     try {
       String url = _THREAD_ADD_URL;
-      var postData = threadData.toJson(apiKey);
+      var postData = threadData.toJson(projectId);
       var response = await Dioo.post(
         url,
         data: postData,
@@ -81,10 +81,10 @@ class NetworkRequestUtilsFixle {
     return null;
   }
 
-  static Future<bool> editThreadDataToApi(ThreadData threadData, String threadId, String apiKey) async {
+  static Future<bool> editThreadDataToApi(ThreadData threadData, String threadId, String projectId) async {
     try {
       String url = _THREAD_edit_URL + threadId;
-      var postData = threadData.toJson(apiKey);
+      var postData = threadData.toJson(projectId);
       await Dioo.put(
         url,
         data: postData,
@@ -107,19 +107,13 @@ class NetworkRequestUtilsFixle {
     return true;
   }
 
-  static Future<List<ThreadData>?> getAllThreads(String apiKey) async {
+  static Future<ProjectThreads> getAllThreads(String apiKey) async {
     var response = await Dioo.get(_THREADS_GET_URL + apiKey,
         options: Options(headers: {
           "x-ms-blob-type": "BlockBlob",
         }));
     if (response.data != null) {
-      List<Future<ThreadData>> futures = [];
-      for (var thread in response.data) {
-        futures.add(ThreadData.fromJson(thread));
-      }
-      var result = Future.wait(futures);
-      logger.d("successfully obtained all threads");
-      return result;
+      return ProjectThreads.fromJson(response.data);
     }
     return Future.value(null);
   }

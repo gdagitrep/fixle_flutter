@@ -28,7 +28,7 @@ class Fixle {
     fixleBarOverlayEntry = null;
   }
 
-  showOverlay(BuildContext context) {
+  showOverlay(BuildContext context, String apiKey) {
     if (fixleBarOverlayEntry == null) {
       fixleBarOverlayEntry = OverlayEntry(
           builder: (context) => Positioned(
@@ -39,7 +39,7 @@ class Fixle {
                     offset += details.delta;
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
-                  child: FixleBar(fixleBarOverlayEntry, threads))));
+                  child: FixleBar(fixleBarOverlayEntry, threads, apiKey))));
       WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixleBarOverlayEntry!));
     }
   }
@@ -49,8 +49,8 @@ class FixleBar extends StatefulWidget {
   /// Never remove it; removing it didn't quite work. So hiding it instead using `hide`.
   final OverlayEntry? fixleBarOverlayEntry;
   final List<_Thread> threads;
-
-  const FixleBar(this.fixleBarOverlayEntry, this.threads);
+  final String projectId;
+  const FixleBar(this.fixleBarOverlayEntry, this.threads, this.projectId);
 
   @override
   State<StatefulWidget> createState() {
@@ -151,7 +151,7 @@ class FixleBarState extends State<FixleBar> {
   void addThreadWithScreenshotOnFixBarAbsence() async {
     Uint8List pngData = await NativeScreenshot.takeScreenshotImage(1) as Uint8List;
 
-    var newThread = _Thread.addNewThread(context, pngData, makeFixleOverlayVisible);
+    var newThread = _Thread.addNewThread(context, pngData, widget.projectId, makeFixleOverlayVisible);
     currentVisibleThread = widget.threads.length;
     widget.threads.add(newThread);
     // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
@@ -188,12 +188,12 @@ class _Thread {
 
   _Thread();
 
-  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, void Function() makeFixleOverlayVisible) {
-    List<String> comments = [];
+  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, String projectId, void Function() makeFixleOverlayVisible) {
+    List<Comment> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
     var pngWidget = Image.memory(pngData);
     var threadData = ThreadData.fromNewThread(comments, threadPosition, pngData);
-    var threadWidget = ThreadWidget(threadData, makeFixleOverlayVisible);
+    var threadWidget = ThreadWidget(threadData, makeFixleOverlayVisible, projectId);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
     // Bad pattern, but no choice for now.
