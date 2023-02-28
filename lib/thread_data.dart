@@ -1,10 +1,43 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fixle_feedback_flutter/network_utils.dart';
 import 'package:fixle_feedback_flutter/primitive_wrapper.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:uuid/uuid.dart';
+import 'package:logger/logger.dart';
+
+class ProjectThreads {
+  List<ThreadData>? threads;
+  static Logger logger = Logger();
+
+  List<ProjectUser>? adminAndCollaborators;
+
+  static Future<ProjectThreads> fromJson(Map<String, dynamic> json) async {
+    List<Future<ThreadData>> futures = [];
+    for (var thread in json['threads']) {
+      futures.add(ThreadData.fromJson(thread));
+    }
+    var result = await Future.wait(futures);
+    logger.d("successfully obtained all threads");
+
+    return Future.value(ProjectThreads()
+      ..adminAndCollaborators =
+          (json['adminAndCollaborators'] as List).map((projectUser) => ProjectUser.fromJson(projectUser)).toList()
+      ..threads = result);
+  }
+}
+
+class ProjectUser {
+  String? fullName;
+
+  String? email;
+
+  static ProjectUser fromJson(Map<String, dynamic> json) {
+    return ProjectUser()
+      ..fullName = json["fullName"]
+      ..email = json["email"];
+  }
+}
 
 class ThreadData {
   late List<Comment> comments = [];

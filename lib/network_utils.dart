@@ -10,9 +10,9 @@ import 'package:logger/logger.dart';
 class NetworkRequestUtilsFixle {
   static const String AZ_BLOB_STORAGE_URL = "https://mealblobstorage.blob.core.windows.net/";
   static const String BLOB_CDN_URL = "https://dsqcdn.azureedge.net/threadimages/";
-  static const String _THREAD_ADD_URL = "https://fixleapi.azurewebsites.net/thread/addThread";
-  static const String _THREAD_edit_URL = "https://fixleapi.azurewebsites.net/thread/editThread?threadId=";
-  static const String _THREADS_GET_URL = "https://fixleapi.azurewebsites.net/thread/getThreads?apiKey=";
+  static const String _THREAD_ADD_URL = "https://fixle.azurewebsites.net/thread/addThread";
+  static const String _THREAD_edit_URL = "https://fixle.azurewebsites.net/thread/editThread?threadId=";
+  static const String _THREADS_GET_URL = "https://fixle.azurewebsites.net/thread/getThreads?projectId=";
   static Logger logger = Logger();
 
   static Future<bool> putToBlobStorage(String imageWithoutContainerName, String sasSuffix, Uint8List postData) async {
