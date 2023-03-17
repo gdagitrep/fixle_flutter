@@ -3,6 +3,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:fixle_feedback_flutter/network_utils.dart';
 import 'package:fixle_feedback_flutter/thread_data.dart';
 import 'package:fixle_feedback_flutter/thread_widget.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,6 @@ class Fixle {
 
   Offset offset = Offset(0, 200);
   OverlayEntry? fixleBarOverlayEntry;
-  List<_Thread> threads = <_Thread>[];
 
   hideOverlay() {
     fixleBarOverlayEntry?.remove();
@@ -39,7 +39,7 @@ class Fixle {
                     offset += details.delta;
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
-                  child: FixleBar(fixleBarOverlayEntry, threads, apiKey))));
+                  child: FixleBar(fixleBarOverlayEntry, apiKey))));
       WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixleBarOverlayEntry!));
     }
   }
@@ -48,9 +48,8 @@ class Fixle {
 class FixleBar extends StatefulWidget {
   /// Never remove it; removing it didn't quite work. So hiding it instead using `hide`.
   final OverlayEntry? fixleBarOverlayEntry;
-  final List<_Thread> threads;
   final String projectId;
-  const FixleBar(this.fixleBarOverlayEntry, this.threads, this.projectId);
+  FixleBar(this.fixleBarOverlayEntry, this.projectId);
 
   @override
   State<StatefulWidget> createState() {
@@ -67,6 +66,20 @@ enum FixBarStateEnum {
 class FixleBarState extends State<FixleBar> {
   FixBarStateEnum hide = FixBarStateEnum.visible;
   int currentVisibleThread = 0;
+  List<_Thread> threads = [];
+
+  @override
+  void initState() {
+    NetworkRequestUtilsFixle.getAllThreads(widget.projectId).then((projectThreads) => {
+      if (projectThreads.threads != null)
+        for (var thread in projectThreads.threads!) {
+
+          threads.add(_Thread.loadThread(
+              context, thread.comments, thread.pngData, widget.projectId, makeFixleOverlayVisible))
+        }
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,13 +110,13 @@ class FixleBarState extends State<FixleBar> {
                 child: IconButton(
                   onPressed: () async {
                     // Avoid adding new threads when already showing an image and a thread. Ask to minimize first.
-                    if (widget.threads.isNotEmpty && widget.threads[currentVisibleThread].isNotHidden()) {
+                    if (threads.isNotEmpty && threads[currentVisibleThread].isNotHidden()) {
                       // TODO: Not working.
                       inform(context, 'Minimize the current thread before adding new comment');
                       return;
                     }
-                    if (widget.threads.isNotEmpty) {
-                      widget.threads[currentVisibleThread].hideThreadBoxAndImage();
+                    if (threads.isNotEmpty) {
+                      threads[currentVisibleThread].hideThreadBoxAndImage();
                     }
                     setState(() {
                       hide = FixBarStateEnum.hidingForSnapshot;
@@ -123,10 +136,10 @@ class FixleBarState extends State<FixleBar> {
                 width: 30.0,
                 child: IconButton(
                     onPressed: () {
-                      if (widget.threads.isNotEmpty) {
-                        widget.threads[currentVisibleThread].hideThreadBoxAndImage();
-                        currentVisibleThread = (currentVisibleThread - 1) % widget.threads.length;
-                        widget.threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
+                      if (threads.isNotEmpty) {
+                        threads[currentVisibleThread].hideThreadBoxAndImage();
+                        currentVisibleThread = (currentVisibleThread - 1) % threads.length;
+                        threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -136,10 +149,10 @@ class FixleBarState extends State<FixleBar> {
                 width: 30.0,
                 child: IconButton(
                     onPressed: () {
-                      if (widget.threads.isNotEmpty) {
-                        widget.threads[currentVisibleThread].hideThreadBoxAndImage();
-                        currentVisibleThread = (currentVisibleThread + 1) % widget.threads.length;
-                        widget.threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
+                      if (threads.isNotEmpty) {
+                        threads[currentVisibleThread].hideThreadBoxAndImage();
+                        currentVisibleThread = (currentVisibleThread + 1) % threads.length;
+                        threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -148,12 +161,41 @@ class FixleBarState extends State<FixleBar> {
         ));
   }
 
+  void signInDialog() {
+    Widget cancelButton = TextButton(
+      child: Text("No"),
+      onPressed: () {
+        Navigator.pop(context);
+      },
+    );
+
+    Widget okButton = Builder(
+        builder: (bContext) => TextButton(
+          child: Text("Yes"),
+          onPressed: () {
+            Navigator.pop(context);
+
+          },
+        ));
+
+    var loginDialog = AlertDialog(
+      content: const Text("You need to signin first", textAlign: TextAlign.justify),
+      actions: [cancelButton, okButton],
+    );
+    showDialog(
+      context: context,
+      builder: (BuildContext bcontext) {
+        return loginDialog;
+      },
+    );
+  }
+
   void addThreadWithScreenshotOnFixBarAbsence() async {
     Uint8List pngData = await NativeScreenshot.takeScreenshotImage(1) as Uint8List;
 
     var newThread = _Thread.addNewThread(context, pngData, widget.projectId, makeFixleOverlayVisible);
-    currentVisibleThread = widget.threads.length;
-    widget.threads.add(newThread);
+    currentVisibleThread = threads.length;
+    threads.add(newThread);
     // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
     setState(() {
       hide = FixBarStateEnum.hidingAfterSnapshot;
@@ -201,8 +243,27 @@ class _Thread {
       threadEntry.remove();
       pngOverlay.remove();
     };
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(threadEntry, above: pngOverlay));
+    return _Thread()
+      ..threadBoxEntry = threadEntry
+      ..imageEntry = pngOverlay
+      ..threadData = threadData;
+  }
+
+  factory _Thread.loadThread(BuildContext context, List<Comment> comments, Uint8List pngData, String projectId,
+      void Function() makeFixleOverlayVisible) {
+    var threadPosition = PrimitiveWrapper(const Offset(50, 50));
+    var pngWidget = Image.memory(pngData);
+    var threadData = ThreadData.fromNewThread(comments, threadPosition, pngData);
+    var threadWidget = ThreadWidget(threadData, makeFixleOverlayVisible, projectId);
+    OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
+    OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
+    // Bad pattern, but no choice for now.
+    threadWidget.threadMinimizingCallback = () {
+      threadEntry.remove();
+      pngOverlay.remove();
+    };
     return _Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay

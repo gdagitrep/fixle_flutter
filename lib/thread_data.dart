@@ -99,7 +99,7 @@ class ThreadData {
   static Future<ThreadData> fromJson(Map<String, dynamic> json) async {
     var imageNameWithoutContainer = json['image'] as String;
     Map<String, dynamic> position = json['offset'];
-    var threadPosition = Offset(position['dx'], position['dy']);
+    var threadPosition = Offset((position['dx']).toDouble(), (position['dy']).toDouble());
     var pngData = await NetworkRequestUtilsFixle.getImage(imageNameWithoutContainer);
     return ThreadData()
       ..pngData = pngData
