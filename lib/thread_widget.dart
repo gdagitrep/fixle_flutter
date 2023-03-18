@@ -1,5 +1,5 @@
 import 'package:fixle_feedback_flutter/primitive_wrapper.dart';
-import 'package:fixle_feedback_flutter/thread_data.dart';
+import 'package:fixle_feedback_flutter/project_and_threads_data.dart';
 import 'package:flutter/material.dart';
 
 class ThreadWidget extends StatefulWidget {

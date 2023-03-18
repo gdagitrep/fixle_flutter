@@ -3,14 +3,17 @@ import 'dart:typed_data';
 import 'package:fixle_feedback_flutter/network_utils.dart';
 import 'package:fixle_feedback_flutter/primitive_wrapper.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 
 class ProjectThreads {
   List<ThreadData>? threads;
-  static Logger logger = Logger();
-
   List<ProjectUser>? adminAndCollaborators;
+  List<String>? enabledVersions;
+  String? currentVersion;
+
+  static Logger logger = Logger();
 
   static Future<ProjectThreads> fromJson(Map<String, dynamic> json) async {
     List<Future<ThreadData>> futures = [];
@@ -23,7 +26,9 @@ class ProjectThreads {
     return Future.value(ProjectThreads()
       ..adminAndCollaborators =
           (json['adminAndCollaborators'] as List).map((projectUser) => ProjectUser.fromJson(projectUser)).toList()
-      ..threads = result);
+      ..threads = result
+      ..enabledVersions = (json['enabledVersions'] as List).map((e) => e as String).toList()
+      ..currentVersion = json['currentVersion'] as String?);
   }
 }
 
@@ -45,7 +50,7 @@ class ThreadData {
   late Uint8List pngData;
 
 // TODO read for an apiKey from api.
-  static const String BLOB_PUT_SAS_SUFFIX =
+  static const String _blobPutSasSuffix =
       "?sp=rw&st=2022-12-04T18:55:57Z&se=2030-12-05T02:55:57Z&spr=https&sv=2021-06-08&sr=c&sig=pMoZZxksl%2BDdg4rguIJSp6yrCrAFmUo1k6E2PybxEQ0%3D";
 
   late String _imageNameWithoutContainer;
@@ -63,20 +68,22 @@ class ThreadData {
       ..pngData = pngData;
   }
 
-  saveThreadData(String projectId) {
+  saveThreadData(String projectId) async {
     if (comments.isEmpty) {
       return;
-    } else if (comments.length == 1) {
+    }
+    String version = (await PackageInfo.fromPlatform()).version;
+    if (comments.length == 1) {
       var futures = <Future>[
-        NetworkRequestUtilsFixle.putToBlobStorage(_imageNameWithoutContainer, BLOB_PUT_SAS_SUFFIX, pngData),
-        NetworkRequestUtilsFixle.addThreadDataToApi(this, projectId).then((value) {
+        NetworkRequestUtilsFixle.putToBlobStorage(_imageNameWithoutContainer, _blobPutSasSuffix, pngData),
+        NetworkRequestUtilsFixle.addThreadDataToApi(this, projectId, version).then((value) {
           if (value != null) _threadId = value;
         })
       ];
-      Future.wait(futures);
+      await Future.wait(futures);
     } else if (comments.length > 1) {
       // edit the thread
-      NetworkRequestUtilsFixle.editThreadDataToApi(this, _threadId, projectId);
+      await NetworkRequestUtilsFixle.editThreadDataToApi(this, _threadId, projectId, version);
     }
   }
 
@@ -84,7 +91,7 @@ class ThreadData {
     return NetworkRequestUtilsFixle.getNetworkImage(_imageNameWithoutContainer);
   }
 
-  Map<String, dynamic> toJson(String apiKey) => <String, dynamic>{
+  Map<String, dynamic> toJson(String apiKey, String version) => <String, dynamic>{
         'Image': _imageNameWithoutContainer,
         'Comments': comments.map((comment) => comment.toJson()).toList(),
         'Offset': threadPosition != null
@@ -94,6 +101,7 @@ class ThreadData {
               }
             : null,
         'ProjectId': apiKey,
+        'Version' : version
       };
 
   static Future<ThreadData> fromJson(Map<String, dynamic> json) async {

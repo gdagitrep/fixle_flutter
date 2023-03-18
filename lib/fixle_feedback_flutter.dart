@@ -4,10 +4,11 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:fixle_feedback_flutter/network_utils.dart';
-import 'package:fixle_feedback_flutter/thread_data.dart';
+import 'package:fixle_feedback_flutter/project_and_threads_data.dart';
 import 'package:fixle_feedback_flutter/thread_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:native_screenshot_ext/native_screenshot_ext.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'primitive_wrapper.dart';
 
@@ -20,7 +21,7 @@ class Fixle {
     return _instance;
   }
 
-  Offset offset = Offset(0, 200);
+  Offset offset = const Offset(0, 200);
   OverlayEntry? fixleBarOverlayEntry;
 
   hideOverlay() {
@@ -40,7 +41,7 @@ class Fixle {
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
                   child: FixleBar(fixleBarOverlayEntry, apiKey))));
-      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixleBarOverlayEntry!));
+      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(fixleBarOverlayEntry!));
     }
   }
 }
@@ -49,7 +50,7 @@ class FixleBar extends StatefulWidget {
   /// Never remove it; removing it didn't quite work. So hiding it instead using `hide`.
   final OverlayEntry? fixleBarOverlayEntry;
   final String projectId;
-  FixleBar(this.fixleBarOverlayEntry, this.projectId);
+  const FixleBar(this.fixleBarOverlayEntry, this.projectId, {super.key});
 
   @override
   State<StatefulWidget> createState() {
@@ -66,18 +67,21 @@ enum FixBarStateEnum {
 class FixleBarState extends State<FixleBar> {
   FixBarStateEnum hide = FixBarStateEnum.visible;
   int currentVisibleThread = 0;
-  List<_Thread> threads = [];
-
+  List<Thread> threads = [];
+  String currentVersion = "latest";
   @override
   void initState() {
-    NetworkRequestUtilsFixle.getAllThreads(widget.projectId).then((projectThreads) => {
-      if (projectThreads.threads != null)
-        for (var thread in projectThreads.threads!) {
-
-          threads.add(_Thread.loadThread(
-              context, thread.comments, thread.pngData, widget.projectId, makeFixleOverlayVisible))
-        }
-    });
+    PackageInfo.fromPlatform().then((packageInfo) => {
+          currentVersion = packageInfo.version,
+          NetworkRequestUtilsFixle.getAllThreads(widget.projectId, currentVersion).then((projectThreads) => {
+                if (projectThreads.threads != null)
+                  for (var thread in projectThreads.threads!)
+                    {
+                      threads.add(Thread.loadThread(
+                          context, thread.comments, thread.pngData, widget.projectId, makeFixleOverlayVisible))
+                    }
+              })
+        });
     super.initState();
   }
 
@@ -163,7 +167,7 @@ class FixleBarState extends State<FixleBar> {
 
   void signInDialog() {
     Widget cancelButton = TextButton(
-      child: Text("No"),
+      child: const Text("No"),
       onPressed: () {
         Navigator.pop(context);
       },
@@ -171,7 +175,7 @@ class FixleBarState extends State<FixleBar> {
 
     Widget okButton = Builder(
         builder: (bContext) => TextButton(
-          child: Text("Yes"),
+          child: const Text("Yes"),
           onPressed: () {
             Navigator.pop(context);
 
@@ -193,7 +197,7 @@ class FixleBarState extends State<FixleBar> {
   void addThreadWithScreenshotOnFixBarAbsence() async {
     Uint8List pngData = await NativeScreenshot.takeScreenshotImage(1) as Uint8List;
 
-    var newThread = _Thread.addNewThread(context, pngData, widget.projectId, makeFixleOverlayVisible);
+    var newThread = Thread.addNewThread(context, pngData, widget.projectId, makeFixleOverlayVisible);
     currentVisibleThread = threads.length;
     threads.add(newThread);
     // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
@@ -223,14 +227,14 @@ class FixleBarState extends State<FixleBar> {
   }
 }
 
-class _Thread {
+class Thread {
   late OverlayEntry threadBoxEntry;
   late OverlayEntry imageEntry;
   late ThreadData threadData;
 
-  _Thread();
+  Thread();
 
-  factory _Thread.addNewThread(BuildContext context, Uint8List pngData, String projectId, void Function() makeFixleOverlayVisible) {
+  factory Thread.addNewThread(BuildContext context, Uint8List pngData, String projectId, void Function() makeFixleOverlayVisible) {
     List<Comment> comments = [];
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
     var pngWidget = Image.memory(pngData);
@@ -245,13 +249,13 @@ class _Thread {
     };
     WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(pngOverlay));
     WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(threadEntry, above: pngOverlay));
-    return _Thread()
+    return Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
       ..threadData = threadData;
   }
 
-  factory _Thread.loadThread(BuildContext context, List<Comment> comments, Uint8List pngData, String projectId,
+  factory Thread.loadThread(BuildContext context, List<Comment> comments, Uint8List pngData, String projectId,
       void Function() makeFixleOverlayVisible) {
     var threadPosition = PrimitiveWrapper(const Offset(50, 50));
     var pngWidget = Image.memory(pngData);
@@ -264,7 +268,7 @@ class _Thread {
       threadEntry.remove();
       pngOverlay.remove();
     };
-    return _Thread()
+    return Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
       ..threadData = threadData;
@@ -286,11 +290,11 @@ class _Thread {
   rebuildThread(BuildContext context, OverlayEntry? fixleBarOverlayEntry) {
     if (!imageEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context).insert(imageEntry, below: fixleBarOverlayEntry));
     }
     if (!threadBoxEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context).insert(threadBoxEntry, above: fixleBarOverlayEntry));
     }
   }
 }
@@ -333,7 +337,7 @@ class ImagePainter extends CustomPainter {
     final src = Offset.zero & imageSize;
     final dst = Offset.zero & size;
     // canvas.pic
-    canvas.drawImageRect(this.image, src, dst, Paint());
+    canvas.drawImageRect(image, src, dst, Paint());
     // for (Offset offset in points) {
     //   canvas.drawCircle(offset, 10, painter);
     // }
