@@ -15,8 +15,6 @@ class ThreadWidget extends StatefulWidget {
 }
 
 class _ThreadWidgetState extends State<ThreadWidget> {
-  late List<Comment> comments;
-  PrimitiveWrapper<Offset>? threadPosition;
   bool? placeIsLocked;
   final fieldText = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -24,17 +22,15 @@ class _ThreadWidgetState extends State<ThreadWidget> {
   @override
   void initState() {
     super.initState();
-    comments = widget.threadData.comments;
-    threadPosition = widget.threadData.threadPosition;
     placeIsLocked = false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return commentThread(widget.threadData.comments);
+    return commentThread(widget.threadData.comments, widget.threadData.threadPosition);
   }
 
-  Widget commentThread(List<Comment> previousComments) {
+  Widget commentThread(List<Comment> previousComments, PrimitiveWrapper<Offset>? threadPosition) {
     Widget bottomBar() => SizedBox(
         height: 35,
         child: Row(
@@ -46,7 +42,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
                 widget.makeFixleOverlayVisible();
               },
               icon: Icon(
-                comments.isEmpty ? Icons.close : Icons.minimize,
+                previousComments.isEmpty ? Icons.close : Icons.minimize,
                 color: Colors.blue,
               ),
               padding: EdgeInsets.zero,
@@ -68,7 +64,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
           ],
         ));
     List<Widget> children = <Widget>[];
-    for (var comment in comments) {
+    for (var comment in previousComments) {
       children.add(Text(comment.commentText));
     }
     children.add(TextFormField(
@@ -88,7 +84,7 @@ class _ThreadWidgetState extends State<ThreadWidget> {
         return null;
       },
       onSaved: (val) {
-        comments.add(Comment()
+        previousComments.add(Comment()
           ..commentText = val!
           ..commentorEmail = "yetToFill");
         fieldText.clear();
@@ -121,25 +117,25 @@ class _ThreadWidgetState extends State<ThreadWidget> {
                         child: Form(key: formKey, child: Column(children: children)))))));
   }
 
-  Widget minimizedThread() {
+  Widget minimizedThreadAndShowCross() {
     return Container();
-    return Positioned(
-        left: 0,
-        top: threadPosition?.value.dy,
-        child: Material(
-            elevation: 8,
-            child: SizedBox(
-                width: 50,
-                child: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        // isMinimized = false;
-                      });
-                      // widget.minimized.value = false;
-                    },
-                    icon: const Icon(
-                      Icons.line_axis,
-                      color: Colors.blue,
-                    )))));
+  //   return Positioned(
+  //       left: 0,
+  //       top: threadPosition?.value.dy,
+  //       child: Material(
+  //           elevation: 8,
+  //           child: SizedBox(
+  //               width: 50,
+  //               child: IconButton(
+  //                   onPressed: () {
+  //                     setState(() {
+  //                       // isMinimized = false;
+  //                     });
+  //                     // widget.minimized.value = false;
+  //                   },
+  //                   icon: const Icon(
+  //                     Icons.line_axis,
+  //                     color: Colors.blue,
+  //                   )))));
   }
 }
