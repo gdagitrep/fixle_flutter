@@ -22,7 +22,7 @@ class Authentication {
     User? user;
     if (kIsWeb) {
       GoogleAuthProvider authProvider = GoogleAuthProvider();
-
+      authProvider.setCustomParameters({'prompt': 'select_account'});
       try {
         final UserCredential userCredential = await auth.signInWithPopup(authProvider);
 
@@ -74,14 +74,18 @@ class Authentication {
     return user;
   }
 
-  static Future<void> signOut({required BuildContext context}) async {
-    final GoogleSignIn googleSignIn = GoogleSignIn();
-
+  static Future<void> signOut({required BuildContext context, required Function(BuildContext, User) actionAfterLogin}) async {
     try {
       if (!kIsWeb) {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
         await googleSignIn.signOut();
       }
       await FirebaseAuth.instance.signOut();
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SignInScreen(actionAfterLogin),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         Authentication.customSnackBar(

@@ -41,7 +41,7 @@ class Fixle {
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
                   child: FixleBar(fixleBarOverlayEntry, apiKey))));
-      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(fixleBarOverlayEntry!));
+      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixleBarOverlayEntry!));
     }
   }
 }
@@ -247,8 +247,8 @@ class Thread {
       threadEntry.remove();
       pngOverlay.remove();
     };
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(pngOverlay));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(threadEntry, above: pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: pngOverlay));
     return Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
@@ -290,11 +290,11 @@ class Thread {
   rebuildThread(BuildContext context, OverlayEntry? fixleBarOverlayEntry) {
     if (!imageEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context).insert(imageEntry, below: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixleBarOverlayEntry));
     }
     if (!threadBoxEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context).insert(threadBoxEntry, above: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixleBarOverlayEntry));
     }
   }
 }
