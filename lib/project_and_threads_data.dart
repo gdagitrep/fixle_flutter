@@ -17,17 +17,19 @@ class ProjectThreads {
 
   static Future<ProjectThreads> fromJson(Map<String, dynamic> json) async {
     List<Future<ThreadData>> futures = [];
-    for (var thread in json['threads']) {
-      futures.add(ThreadData.fromJson(thread));
+    if(json['threads'] != null) {
+      for (var thread in json['threads']) {
+        futures.add(ThreadData.fromJson(thread));
+      }
     }
-    var result = await Future.wait(futures);
+    var result = futures.isNotEmpty? await Future.wait(futures) : <ThreadData>[];
     logger.d("successfully obtained all threads");
 
     return Future.value(ProjectThreads()
       ..adminAndCollaborators =
           (json['adminAndCollaborators'] as List).map((projectUser) => ProjectUser.fromJson(projectUser)).toList()
       ..threads = result
-      ..enabledVersions = (json['enabledVersions'] as List).map((e) => e as String).toList()
+      ..enabledVersions = (json['enabledVersions'] as List?)?.map((e) => e as String).toList()
       ..currentVersion = json['currentVersion'] as String?);
   }
 }
