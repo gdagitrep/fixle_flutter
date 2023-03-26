@@ -10,7 +10,7 @@ import 'package:logger/logger.dart';
 class ProjectThreads {
   List<ThreadData>? threads;
   List<ProjectUser>? adminAndCollaborators;
-  List<String>? enabledVersions;
+  Set<String>? enabledVersions;
   String? currentVersion;
 
   static Logger logger = Logger();
@@ -27,9 +27,9 @@ class ProjectThreads {
 
     return Future.value(ProjectThreads()
       ..adminAndCollaborators =
-          (json['adminAndCollaborators'] as List).map((projectUser) => ProjectUser.fromJson(projectUser)).toList()
+          (json['adminAndCollaborators'] as List?)?.map((projectUser) => ProjectUser.fromJson(projectUser)).toList()
       ..threads = result
-      ..enabledVersions = (json['enabledVersions'] as List?)?.map((e) => e as String).toList()
+      ..enabledVersions = (json['enabledVersions'] as List?)?.map((e) => e as String).toSet()
       ..currentVersion = json['currentVersion'] as String?);
   }
 }
@@ -65,6 +65,13 @@ class ThreadData {
     var randomString = const Uuid().v5(Uuid.NAMESPACE_NIL, seed);
     return ThreadData()
       .._imageNameWithoutContainer = randomString
+      ..comments = comments
+      ..threadPosition = threadPosition
+      ..pngData = pngData;
+  }
+
+  factory ThreadData.fromExistingThread(List<Comment> comments, PrimitiveWrapper<Offset> threadPosition, Uint8List pngData) {
+    return ThreadData()
       ..comments = comments
       ..threadPosition = threadPosition
       ..pngData = pngData;

@@ -4,13 +4,13 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:fixle_feedback_flutter/network_utils.dart';
+import 'package:fixle_feedback_flutter/primitive_wrapper.dart';
 import 'package:fixle_feedback_flutter/project_and_threads_data.dart';
 import 'package:fixle_feedback_flutter/thread_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:native_screenshot_ext/native_screenshot_ext.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-
-import 'primitive_wrapper.dart';
 
 class Fixle {
   static final Fixle _instance = Fixle._internal();
@@ -41,7 +41,7 @@ class Fixle {
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
                   child: FixleBar(fixleBarOverlayEntry, apiKey))));
-      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(fixleBarOverlayEntry!));
+      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(fixleBarOverlayEntry!));
     }
   }
 }
@@ -51,6 +51,7 @@ class FixleBar extends StatefulWidget {
   final OverlayEntry? fixleBarOverlayEntry;
   final String projectId;
   const FixleBar(this.fixleBarOverlayEntry, this.projectId, {super.key});
+  static Logger logger = Logger();
 
   @override
   State<StatefulWidget> createState() {
@@ -62,27 +63,40 @@ enum FixBarStateEnum {
   visible,
   hidingForSnapshot,
   hidingAfterSnapshot,
+  alwaysHidden
 }
 
 class FixleBarState extends State<FixleBar> {
-  FixBarStateEnum hide = FixBarStateEnum.visible;
+  FixBarStateEnum hide = FixBarStateEnum.alwaysHidden;
   int currentVisibleThread = 0;
   List<Thread> threads = [];
   String currentVersion = "latest";
   @override
   void initState() {
-    PackageInfo.fromPlatform().then((packageInfo) => {
-          currentVersion = packageInfo.version,
-          NetworkRequestUtilsFixle.getAllThreads(widget.projectId, currentVersion).then((projectThreads) => {
-                if (projectThreads.threads != null)
-                  for (var thread in projectThreads.threads!)
-                    {
-                      threads.add(Thread.loadThread(
-                          context, thread.comments, thread.pngData, widget.projectId, makeFixleOverlayVisible))
-                    }
-              })
-        });
     super.initState();
+    PackageInfo.fromPlatform().then((packageInfo) => {
+      currentVersion = packageInfo.version,
+      NetworkRequestUtilsFixle.getAllThreads(widget.projectId, currentVersion).then((projectThreads) => {
+        if (projectThreads.enabledVersions != null &&
+            projectThreads.enabledVersions?.contains(currentVersion) == true)
+          {
+            setState(() {
+              hide = FixBarStateEnum.visible;
+            }),
+            if (projectThreads.threads != null)
+              for (var thread in projectThreads.threads!)
+                {
+                  threads.add(Thread.loadThread(
+                      context, thread.comments, thread.threadPosition, thread.pngData, widget.projectId, makeFixleOverlayVisible))
+                }
+          }
+        else
+          {
+            FixleBar.logger.d(
+                "Fixle not enabled for \"$currentVersion\". To enable, go to Fixle Dashboard -> Project -> Settings -> Enable version ")
+          }
+      })
+    });
   }
 
   @override
@@ -96,7 +110,7 @@ class FixleBarState extends State<FixleBar> {
       return Container();
     }
 
-    if (hide == FixBarStateEnum.hidingAfterSnapshot) {
+    if (hide == FixBarStateEnum.hidingAfterSnapshot || hide == FixBarStateEnum.alwaysHidden) {
       return Container();
     }
     return Material(
@@ -247,19 +261,18 @@ class Thread {
       threadEntry.remove();
       pngOverlay.remove();
     };
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(threadEntry, above: pngOverlay));
     return Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
       ..threadData = threadData;
   }
 
-  factory Thread.loadThread(BuildContext context, List<Comment> comments, Uint8List pngData, String projectId,
-      void Function() makeFixleOverlayVisible) {
-    var threadPosition = PrimitiveWrapper(const Offset(50, 50));
+  factory Thread.loadThread(BuildContext context, List<Comment> comments, PrimitiveWrapper<Offset>? threadPosition,
+      Uint8List pngData, String projectId, void Function() makeFixleOverlayVisible) {
     var pngWidget = Image.memory(pngData);
-    var threadData = ThreadData.fromNewThread(comments, threadPosition, pngData);
+    var threadData = ThreadData.fromExistingThread(comments, threadPosition?? PrimitiveWrapper(const Offset(50, 50)), pngData);
     var threadWidget = ThreadWidget(threadData, makeFixleOverlayVisible, projectId);
     OverlayEntry threadEntry = OverlayEntry(builder: (context) => threadWidget);
     OverlayEntry pngOverlay = OverlayEntry(builder: (context) => pngWidget);
@@ -290,11 +303,11 @@ class Thread {
   rebuildThread(BuildContext context, OverlayEntry? fixleBarOverlayEntry) {
     if (!imageEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context).insert(imageEntry, below: fixleBarOverlayEntry));
     }
     if (!threadBoxEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context).insert(threadBoxEntry, above: fixleBarOverlayEntry));
     }
   }
 }

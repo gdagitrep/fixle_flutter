@@ -109,6 +109,7 @@ class NetworkRequestUtilsFixle {
     return true;
   }
 
+  // This api call will give us no threads when currentVersion is not enabled.
   static Future<ProjectThreads> getAllThreads(String apiKey, String version) async {
     var response = await Dioo.get(_threadsGetUrl,
         queryParameters: {"projectId" : apiKey, "version": version},
