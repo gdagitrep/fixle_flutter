@@ -40,7 +40,7 @@ class Fixle {
                     offset += details.delta;
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
-                  child: FixleBar(fixleBarOverlayEntry, apiKey))));
+                  child: Tooltip(message: 'This is fixle bar; use it to add comments on screens, or go through previously made comments', child: FixleBar(fixleBarOverlayEntry, apiKey)))));
       WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(fixleBarOverlayEntry!));
     }
   }
@@ -59,15 +59,22 @@ class FixleBar extends StatefulWidget {
   }
 }
 
-enum FixBarStateEnum {
+enum FixleBarStateEnum {
   visible,
   hidingForSnapshot,
   hidingAfterSnapshot,
   alwaysHidden
 }
 
+enum FixleModeEnum {
+  appRunning,
+  addingNewThread,
+  showingThreads,
+}
+
 class FixleBarState extends State<FixleBar> {
-  FixBarStateEnum hide = FixBarStateEnum.alwaysHidden;
+  FixleBarStateEnum hide = FixleBarStateEnum.alwaysHidden;
+  FixleModeEnum mode = FixleModeEnum.appRunning;
   int currentVisibleThread = 0;
   List<Thread> threads = [];
   String currentVersion = "latest";
@@ -81,7 +88,7 @@ class FixleBarState extends State<FixleBar> {
             projectThreads.enabledVersions?.contains(currentVersion) == true)
           {
             setState(() {
-              hide = FixBarStateEnum.visible;
+              hide = FixleBarStateEnum.visible;
             }),
             if (projectThreads.threads != null)
               for (var thread in projectThreads.threads!)
@@ -103,14 +110,14 @@ class FixleBarState extends State<FixleBar> {
   Widget build(BuildContext context) {
     // Had to create states to avoid this being called again and again for some reason due to rebuild through
     // addThreadWithScreenshotOnFixBarAbsence -> hideThread -> removing Entries even when not needed to remove.
-    if (hide == FixBarStateEnum.hidingForSnapshot) {
+    if (hide == FixleBarStateEnum.hidingForSnapshot) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         addThreadWithScreenshotOnFixBarAbsence();
       });
       return Container();
     }
 
-    if (hide == FixBarStateEnum.hidingAfterSnapshot || hide == FixBarStateEnum.alwaysHidden) {
+    if (hide == FixleBarStateEnum.hidingAfterSnapshot || hide == FixleBarStateEnum.alwaysHidden) {
       return Container();
     }
     return Material(
@@ -122,46 +129,50 @@ class FixleBarState extends State<FixleBar> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-                height: 30.0,
-                width: 30.0,
-                child: IconButton(
-                  onPressed: () async {
-                    // Avoid adding new threads when already showing an image and a thread. Ask to minimize first.
-                    if (threads.isNotEmpty && threads[currentVisibleThread].isNotHidden()) {
-                      // TODO: Not working.
-                      inform(context, 'Minimize the current thread before adding new comment');
-                      return;
-                    }
-                    if (threads.isNotEmpty) {
-                      threads[currentVisibleThread].hideThreadBoxAndImage();
-                    }
-                    setState(() {
-                      hide = FixBarStateEnum.hidingForSnapshot;
-                    });
-                  },
-                  icon: const Icon(Icons.add_comment),
-                  padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-                  alignment: Alignment.center,
-                )),
-            SizedBox(
+            (mode == FixleModeEnum.addingNewThread || mode == FixleModeEnum.showingThreads)
+                ? Container()
+                : SizedBox(
+                    height: 30.0,
+                    width: 30.0,
+                    child: IconButton(
+                      onPressed: () async {
+                        // Avoid adding new threads when already showing an image and a thread. Ask to minimize first.
+                        if (threads.isNotEmpty && threads[currentVisibleThread].isNotHidden()) {
+                          // TODO: Not working.
+                          inform(context, 'Minimize the current thread before adding new comment');
+                          return;
+                        }
+                        if (threads.isNotEmpty) {
+                          threads[currentVisibleThread].hideThreadBoxAndImage();
+                        }
+                        setState(() {
+                          hide = FixleBarStateEnum.hidingForSnapshot;
+                          mode = FixleModeEnum.addingNewThread;
+                        });
+                      },
+                      icon: const Icon(Icons.add_comment),
+                      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                      alignment: Alignment.center,
+                    )),
+            /*SizedBox(
                 height: 40.0,
                 width: 30.0,
                 child: IconButton(
-                    onPressed: () {}, padding: const EdgeInsets.fromLTRB(0, 10, 0, 30), icon: const Icon(Icons.list))),
+                    onPressed: () {}, padding: const EdgeInsets.fromLTRB(0, 10, 0, 30), icon: const Icon(Icons.list))),*/
             SizedBox(
                 height: 40.0,
                 width: 30.0,
-                child: IconButton(
+                child: Tooltip(message:'',child:IconButton(
                     onPressed: () {
                       if (threads.isNotEmpty) {
                         threads[currentVisibleThread].hideThreadBoxAndImage();
                         currentVisibleThread = (currentVisibleThread - 1) % threads.length;
                         threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
+                        mode = FixleModeEnum.showingThreads;
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
-                    icon: const Icon(Icons.arrow_upward))),
+                    icon: const Icon(Icons.arrow_upward)))),
             SizedBox(
                 height: 40.0,
                 width: 30.0,
@@ -171,6 +182,7 @@ class FixleBarState extends State<FixleBar> {
                         threads[currentVisibleThread].hideThreadBoxAndImage();
                         currentVisibleThread = (currentVisibleThread + 1) % threads.length;
                         threads[currentVisibleThread].rebuildThread(context, widget.fixleBarOverlayEntry);
+                        mode = FixleModeEnum.showingThreads;
                       }
                     },
                     padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
@@ -216,14 +228,19 @@ class FixleBarState extends State<FixleBar> {
     threads.add(newThread);
     // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
     setState(() {
-      hide = FixBarStateEnum.hidingAfterSnapshot;
+      hide = FixleBarStateEnum.hidingAfterSnapshot;
     });
   }
 
   void makeFixleOverlayVisible() {
-    if (hide != FixBarStateEnum.visible) {
+    if (hide != FixleBarStateEnum.visible) {
       setState(() {
-        hide = FixBarStateEnum.visible;
+        hide = FixleBarStateEnum.visible;
+        mode = FixleModeEnum.appRunning;
+      });
+    } else {
+      setState(() {
+        mode = FixleModeEnum.appRunning;
       });
     }
   }
