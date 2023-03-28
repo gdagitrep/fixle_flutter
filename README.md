@@ -13,8 +13,8 @@ to collaborate seamlessly and get feedback on your app development process in re
 Some screenshots showing these features:
 
 ![app_bar.png](sample_photos%2Fapp_bar.png)
-![showing a thread.png](sample_photos%2Fshowing%20a%20thread.png)
 ![showing a thread 2.png](sample_photos%2Fshowing%20a%20thread%202.png)
+![showing a thread.png](sample_photos%2Fshowing%20a%20thread.png)
 
 [//]: # (When disabled, the users won't see this ability. So, your APPS production versions won't see any Fixle components.&#41;)
 
