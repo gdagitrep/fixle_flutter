@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:dart_utils/network_core.dart';
+import 'package:dsquare_dart_utils/network_core.dart';
 import 'package:dio/dio.dart';
 import 'package:fixle_feedback_flutter/project_and_threads_data.dart';
 
@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 
 class NetworkRequestUtilsFixle {
-  static const String _azBlobStorageUrl = "https://mealblobstorage.blob.core.windows.net/";
   static const String blobCDNUrl = "https://dsqcdn.azureedge.net/threadimages/";
   static const String _threadAddUrl = "https://fixle.azurewebsites.net/thread/addThread";
   static const String _threadEditUrl = "https://fixle.azurewebsites.net/thread/editThread?threadId=";

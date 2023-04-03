@@ -25,30 +25,44 @@ Some screenshots showing these features:
 ## Installation
 
 For integration, as an app developer you just need to add 2 lines of code. Following are the steps:
-1. Set up on [Fixle](https://fixle-dash.web.app/#/).
+1. Paste ```fixle_flutter_feedback: ^0.0.1``` under `pubspec.yaml` of your flutter APP project.
+2. Set up on [Fixle](https://fixle-dash.web.app/#/).
    1. Go to [Fixle Dashboard](https://fixle-dash.web.app/#/) (Sign in if not already)
-   2. Create new project 
+   2. Go to your project cCreate new project if not already) 
    3. Add the version of your app mentioned in file `pubspec.yaml` 
    4. Copy api key
-2. Go to the home widget of your app. 
-   1. Your home widget is the one which you mention in `main.dart`, under return `MaterialApp(home: HomeWidget())`.
-   2. Paste `Fixle().showOverlay(context, 'api_key_that_you_copied_above');` in the build method of Home Widget.
-   3. If Home widget is a `StatefulWidget`, also paste `Fixle().hideOverlay();` in the `dispose()` method. If you don't have a dispose method, create one using 
+3. Go to the home widget of your APP project. 
+   1. Your home widget is the one which you mention under `MaterialApp(home: HomeWidget())`.
+   2. Paste this in the build method of Home Widget:
       ```
-      @override
-      void dispose() {
-          Fixle().hideOverlay();
-          super.dispose();
-      }
+      Fixle().showOverlay(context, 'api_key_that_you_copied_above');
       ```
-   4. If you have different routes, mentioned under 
+
+[//]: # (   3. If Home widget is a `StatefulWidget`, also paste `Fixle&#40;&#41;.hideOverlay&#40;&#41;;` in the `dispose&#40;&#41;` method. If you don't have a dispose method, create one using )
+
+[//]: # (      ```)
+
+[//]: # (      @override)
+
+[//]: # (      void dispose&#40;&#41; {)
+
+[//]: # (          Fixle&#40;&#41;.hideOverlay&#40;&#41;;)
+
+[//]: # (          super.dispose&#40;&#41;;)
+
+[//]: # (      })
+
+[//]: # (      ```)
+   3. If you have different routes, mentioned under 
       ```
         MaterialApp(home: HomeWidget(), routes: {
             '/search': (context) => SearchPage()
         })
       ``` 
-      then you will have to do this for all these route widgets too (`SearchPage` in this example)
-   5. That's it. When you deploy the app, and change the version, make sure to do step 1.iii for this new version.
+      then you will have to do this for all these route widgets too (`SearchPage` in this example). 
+      (Don't worry, there will just be one instance of Fixle utility bar created).
+      
+4. That's it. When you deploy the app, and change the version, make sure to do step (2.iii) for this new version.
 
 [//]: # (## Usage)
 

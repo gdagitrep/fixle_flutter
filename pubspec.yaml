@@ -1,7 +1,9 @@
 name: fixle_feedback_flutter
-description: A new Flutter package project.
+description: Fixle's flutter package. Use it to get feedback from clients/teams during app development.
 version: 0.0.1
-homepage:
+homepage: https://github.com/gdagitrep/fixle_flutter.git
+repository: https://github.com/gdagitrep/fixle_flutter.git
+issue_tracker: https://github.com/gdagitrep/fixle_flutter/issues
 
 environment:
   sdk: '>=2.18.4 <3.0.0'
@@ -18,8 +20,7 @@ dependencies:
   dio: ^4.0.6
   uuid: ^3.0.6
 
-  dart_utils:
-    git: https://github.com/gdagitrep/dart-utils
+  dsquare_dart_utils: ^0.0.1
   logger: ^1.1.0
 dev_dependencies:
   flutter_test:

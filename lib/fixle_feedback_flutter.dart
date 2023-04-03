@@ -40,8 +40,27 @@ class Fixle {
                     offset += details.delta;
                     fixleBarOverlayEntry!.markNeedsBuild();
                   },
-                  child: Tooltip(message: 'This is fixle bar; use it to add comments on screens, or go through previously made comments', child: FixleBar(fixleBarOverlayEntry, apiKey)))));
-      WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(fixleBarOverlayEntry!));
+                  child: Tooltip(
+                      message:
+                          'This is fixle bar; use it to add comments on screens, or go through previously made comments',
+                      child: FixleBar(fixleBarOverlayEntry, apiKey)))));
+      var overlayState = context.findAncestorStateOfType<OverlayState>();
+      assert(() {
+        if (overlayState == null) {
+          final List<DiagnosticsNode> information = <DiagnosticsNode>[
+            ErrorSummary(
+                'Your app hasn\'t built yet. Don\'t initiate Fixle in the build method of the top-level widget.'),
+            ErrorDescription(
+                'Fixle requires a MaterialApp, CupertinoApp or Navigator widget to be built, before it can be built. '),
+            ErrorHint(
+                'Invoke the `Fixle().showOverlay(context, api_key_)` method inside the build method of second top level widget. The second-top level widget is the one that sits inside `MaterialApp(...)`. It is fine to mention `Fixle().showOverlay(context, api_key_)` in multiple widgets, you only create one Fixle widget.'),
+          ];
+
+          throw FlutterError.fromParts(information);
+        }
+        return true;
+      }());
+      WidgetsBinding.instance.addPostFrameCallback((_) => overlayState?.insert(fixleBarOverlayEntry!));
     }
   }
 }
@@ -100,7 +119,7 @@ class FixleBarState extends State<FixleBar> {
         else
           {
             FixleBar.logger.d(
-                "Fixle not enabled for \"$currentVersion\". To enable, go to Fixle Dashboard -> Project -> Settings -> Enable version ")
+                "Fixle not enabled for \"$currentVersion\". To enable, go to Fixle Dashboard(http://fixle-dash.web.app) -> Project -> Settings -> Enable version ")
           }
       })
     });
@@ -226,8 +245,8 @@ class FixleBarState extends State<FixleBar> {
     var newThread = Thread.addNewThread(context, pngData, widget.projectId, makeFixleOverlayVisible);
     currentVisibleThread = threads.length;
     threads.add(newThread);
-    // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled becuase of some rebuild
     setState(() {
+      // This is important to avoid the method addThreadWithScreenshotOnFixBarAbsence being recalled because of some rebuild
       hide = FixleBarStateEnum.hidingAfterSnapshot;
     });
   }
@@ -278,8 +297,8 @@ class Thread {
       threadEntry.remove();
       pngOverlay.remove();
     };
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(pngOverlay));
-    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context).insert(threadEntry, above: pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(pngOverlay));
+    WidgetsBinding.instance.addPostFrameCallback((_) => Overlay.of(context)?.insert(threadEntry, above: pngOverlay));
     return Thread()
       ..threadBoxEntry = threadEntry
       ..imageEntry = pngOverlay
@@ -320,11 +339,11 @@ class Thread {
   rebuildThread(BuildContext context, OverlayEntry? fixleBarOverlayEntry) {
     if (!imageEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context).insert(imageEntry, below: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(imageEntry, below: fixleBarOverlayEntry));
     }
     if (!threadBoxEntry.mounted) {
       WidgetsBinding.instance
-          .addPostFrameCallback((_) => Overlay.of(context).insert(threadBoxEntry, above: fixleBarOverlayEntry));
+          .addPostFrameCallback((_) => Overlay.of(context)?.insert(threadBoxEntry, above: fixleBarOverlayEntry));
     }
   }
 }
@@ -333,7 +352,7 @@ class Thread {
 class ImageWidget extends StatefulWidget {
   final Uint8List pngData;
 
-  const ImageWidget(this.pngData);
+  const ImageWidget(this.pngData, {super.key});
 
   @override
   State<StatefulWidget> createState() {
