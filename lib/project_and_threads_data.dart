@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fixle_feedback_flutter/network_utils.dart';
@@ -63,8 +64,9 @@ class ThreadData {
   factory ThreadData.fromNewThread(List<Comment> comments, PrimitiveWrapper<Offset> threadPosition, Uint8List pngData) {
     String seed = DateTime.now().toString();
     var randomString = const Uuid().v5(Uuid.NAMESPACE_NIL, seed);
+    var suffix = Platform.isIOS ? "-i" : (Platform.isAndroid ? "-a" : "-u");
     return ThreadData()
-      .._imageNameWithoutContainer = randomString
+      .._imageNameWithoutContainer = randomString + suffix
       ..comments = comments
       ..threadPosition = threadPosition
       ..pngData = pngData;

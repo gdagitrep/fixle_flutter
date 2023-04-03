@@ -8,7 +8,7 @@ class ThreadWidget extends StatefulWidget {
   final void Function() makeFixleOverlayVisible;
   final String projectId;
 
-  ThreadWidget(this.threadData, this.makeFixleOverlayVisible, this.projectId);
+  ThreadWidget(this.threadData, this.makeFixleOverlayVisible, this.projectId, {super.key});
 
   @override
   State<StatefulWidget> createState() => _ThreadWidgetState();

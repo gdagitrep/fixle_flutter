@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  native_screenshot_ext: ^1.2.4
+  native_screenshot_ext: ^1.2.5
   firebase_auth: ^4.2.0
   google_sign_in: ^5.4.2
   firebase_core: ^2.4.0
