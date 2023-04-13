@@ -12,9 +12,9 @@ dependencies:
   flutter:
     sdk: flutter
   native_screenshot_ext: ^1.2.4
-  firebase_auth: ^4.2.0
+  firebase_auth: ^1.1.0
   google_sign_in: ^5.4.2
-  firebase_core: ^2.4.0
+  firebase_core: ^1.1.0
   package_info_plus: ^1.4.2
 
   dio: ^4.0.6

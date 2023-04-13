@@ -1,20 +1,26 @@
 # Fixle Flutter
 
-This is a package to use Fixle on UI of a flutter app.
+This is a package to use Fixle in a flutter based app.
 
-Fixle provides a platform for mobile app developers, product managers, and designers,
-to collaborate seamlessly and get feedback on your app development process in real-time.
+Fixle provides a platform for your team of mobile app developers, and product owners,
+to exchange feedback seamlessly during the app development phase in real-time.
 
 ## Features
-1. No need to take screenshots of the app screens and email them to your team. Fixle does that for you; you just need to add comments on those screens, and fixle does the rest.
-2. Go through previous comments and participate in conversations with the team.
-3. Enable/disable these functionalities for a particular version of this app, with the switch of a button on [Fixle Dashboard](https://fixle-dash.web.app/#/)-> Settings -> Enabled versions. 
+1. A user-friendly `Fixle utility bar` appears over your app.
 
-Some screenshots showing these features:
+    ![app_bar.png](sample_photos%2Fapp_bar.png)
 
-![app_bar.png](sample_photos%2Fapp_bar.png)
-![showing a thread 2.png](sample_photos%2Fshowing%20a%20thread%202.png)
-![showing a thread.png](sample_photos%2Fshowing%20a%20thread.png)
+2. The utility bar provides ability to add comments on app screens (by pressing ![app_bar_plus_sign.png](sample_photos%2Fapp_bar_plus_sign.png)). No need to take screenshots of the app screens and email them.
+
+    ![clip make comment short.gif](sample_photos%2Fclip%20make%20comment%20short.gif)
+3. Go through previous comments and participate in conversations with the team, on the app itself, or on the [Fixle Dashboard](https://fixle-dash.web.app/#/)
+
+   ![showing a thread 2.png](sample_photos%2Fshowing%20a%20thread%202.png)
+   ![showing a thread.png](sample_photos%2Fshowing%20a%20thread.png)
+4. Enable/disable these functionalities for a particular version of this app on [Fixle Dashboard](https://fixle-dash.web.app/#/)-> Settings -> Enabled versions. 
+
+   ![add version_1.gif](sample_photos%2Fadd%20version_1.gif)
+   This flexibility means you (developer) can use Fixle during the development process and then turn it off when the app is ready for public release.
 
 [//]: # (When disabled, the users won't see this ability. So, your APPS production versions won't see any Fixle components.&#41;)
 
@@ -24,14 +30,21 @@ Some screenshots showing these features:
 
 ## Installation
 
-For integration, as an app developer you just need to add 2 lines of code. Following are the steps:
+For integration, as an app developer, you just need to add 2 lines of code. Following are the steps:
 1. Paste ```fixle_flutter_feedback: ^0.0.1``` under `pubspec.yaml` of your flutter APP project.
 2. Set up on [Fixle](https://fixle-dash.web.app/#/).
    1. Go to [Fixle Dashboard](https://fixle-dash.web.app/#/) (Sign in if not already)
    2. Go to your project cCreate new project if not already) 
    3. Add the version of your app mentioned in file `pubspec.yaml` 
    4. Copy api key
-3. Go to the home widget of your APP project. 
+3. You will need to add fixle to your `pubspec.yaml`
+   ```
+   dependencies:
+    flutter:
+      sdk: flutter
+    fixle_feedback_flutter: 0.0.1 # use the latest version found on pub.dev
+   ```
+4. Go to the home widget of your APP project. 
    1. Your home widget is the one which you mention under `MaterialApp(home: HomeWidget())`.
    2. Paste this in the build method of Home Widget:
       ```
