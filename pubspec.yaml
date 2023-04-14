@@ -1,6 +1,6 @@
 name: fixle_feedback_flutter
 description: Fixle's flutter package. Use it to get feedback from clients/teams during app development.
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/gdagitrep/fixle_flutter.git
 repository: https://github.com/gdagitrep/fixle_flutter.git
 issue_tracker: https://github.com/gdagitrep/fixle_flutter/issues
@@ -12,9 +12,6 @@ dependencies:
   flutter:
     sdk: flutter
   native_screenshot_ext: ^1.2.4
-  firebase_auth: ^1.1.0
-  google_sign_in: ^5.4.2
-  firebase_core: ^1.1.0
   package_info_plus: ^1.4.2
 
   dio: ^4.0.6
