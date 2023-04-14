@@ -40,9 +40,7 @@ For integration, as an app developer, you just need to add 2 lines of code. Foll
 3. You will need to add fixle to your `pubspec.yaml`
    ```
    dependencies:
-    flutter:
-      sdk: flutter
-    fixle_feedback_flutter: 0.0.1 # use the latest version found on pub.dev
+    fixle_feedback_flutter: 0.0.2 # use the latest version found on pub.dev
    ```
 4. Go to the home widget of your APP project. 
    1. Your home widget is the one which you mention under `MaterialApp(home: HomeWidget())`.
